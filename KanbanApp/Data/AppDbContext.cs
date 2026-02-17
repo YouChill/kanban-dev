@@ -104,7 +104,16 @@ public class AppDbContext : DbContext
 
             entity.HasMany(e => e.Tasks)
                 .WithMany(t => t.Tags)
-                .UsingEntity(j => j.ToTable("TaskItemTag"));
+                .UsingEntity(j =>
+                {
+                    j.ToTable("TaskItemTag");
+                    j.HasData(
+                        new { TasksId = 1, TagsId = 5 },  // CI/CD ← devops
+                        new { TasksId = 1, TagsId = 6 },  // CI/CD ← setup
+                        new { TasksId = 3, TagsId = 2 },  // Login ← frontend
+                        new { TasksId = 3, TagsId = 4 }   // Login ← design
+                    );
+                });
         });
 
         // ChecklistItem
@@ -212,12 +221,5 @@ public class AppDbContext : DbContext
             new ChecklistItem { Id = 3, Text = "Zdefiniować indeksy",   IsDone = false, TaskItemId = 2 }
         );
 
-        // TaskItem <-> Tag (many-to-many join table)
-        modelBuilder.Entity("TaskItemTag").HasData(
-            new { TasksId = 1, TagsId = 5 },  // CI/CD ← devops
-            new { TasksId = 1, TagsId = 6 },  // CI/CD ← setup
-            new { TasksId = 3, TagsId = 2 },  // Login ← frontend
-            new { TasksId = 3, TagsId = 4 }   // Login ← design
-        );
     }
 }

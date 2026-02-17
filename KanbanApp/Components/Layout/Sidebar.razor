@@ -1,0 +1,44 @@
+@inject NavigationManager Navigation
+
+<aside class="sidebar @(Collapsed ? "sidebar--collapsed" : "")">
+    <div class="sidebar__header">
+        <a class="sidebar__logo" href="/">
+            <div class="sidebar__logo-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="5" height="18" rx="1" />
+                    <rect x="10" y="3" width="5" height="12" rx="1" />
+                    <rect x="17" y="3" width="5" height="15" rx="1" />
+                </svg>
+            </div>
+            <span class="sidebar__logo-text">KanbanApp</span>
+        </a>
+
+        <button class="sidebar__toggle" @onclick="OnToggle" title="Zwiń sidebar">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+                <polyline points="14 9 17 12 14 15" />
+            </svg>
+        </button>
+    </div>
+
+    <nav class="sidebar__nav">
+        <NavLink class="sidebar__nav-item" href="boards" Match="NavLinkMatch.Prefix" ActiveClass="sidebar__nav-item--active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9" rx="1" />
+                <rect x="14" y="3" width="7" height="5" rx="1" />
+                <rect x="14" y="12" width="7" height="9" rx="1" />
+                <rect x="3" y="16" width="7" height="5" rx="1" />
+            </svg>
+            <span>Tablice</span>
+        </NavLink>
+    </nav>
+</aside>
+
+@code {
+    [Parameter]
+    public bool Collapsed { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
+}

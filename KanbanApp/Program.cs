@@ -20,7 +20,16 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    try
+    {
+        db.Database.Migrate();
+    }
+    catch (Microsoft.Data.Sqlite.SqliteException)
+    {
+        // Database file exists but has no migration history — recreate it
+        db.Database.EnsureDeleted();
+        db.Database.Migrate();
+    }
 }
 
 // Configure the HTTP request pipeline.

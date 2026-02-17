@@ -1,0 +1,103 @@
+@page "/boards"
+@using KanbanApp.Models
+@using KanbanApp.Services.Interfaces
+@inject IBoardService BoardService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>Tablice</PageTitle>
+
+@if (_loading)
+{
+    <div class="boards-loading">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Ładowanie tablic...</MudText>
+    </div>
+}
+else if (_boards is null || _boards.Count == 0)
+{
+    <div class="boards-empty">
+        <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Style="font-size: 80px; color: var(--text-secondary); opacity: 0.4;" />
+        <MudText Typo="Typo.h5" Color="Color.Secondary" Class="mt-4">Nie masz jeszcze żadnej tablicy</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">Utwórz pierwszą tablicę, aby rozpocząć pracę</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenNewBoardDialog">
+            Nowa tablica
+        </MudButton>
+    </div>
+}
+else
+{
+    <div class="boards-header">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenNewBoardDialog">
+            Nowa tablica
+        </MudButton>
+    </div>
+
+    <MudGrid Class="mt-4">
+        @foreach (var board in _boards)
+        {
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Class="boards-card" Elevation="0">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6">@board.Name</MudText>
+                        @if (!string.IsNullOrWhiteSpace(board.Description))
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2 boards-card__description">
+                                @Truncate(board.Description, 100)
+                            </MudText>
+                        }
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3">
+                            Utworzono: @board.CreatedAt.ToString("dd.MM.yyyy")
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => OpenBoard(board.Id)">
+                            Otwórz
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<Board>? _boards;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBoards();
+    }
+
+    private async Task LoadBoards()
+    {
+        _loading = true;
+        _boards = await BoardService.GetAllBoardsAsync();
+        _loading = false;
+    }
+
+    private async Task OpenNewBoardDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<NewBoardDialog>("Nowa tablica", options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadBoards();
+        }
+    }
+
+    private void OpenBoard(int id)
+    {
+        Navigation.NavigateTo($"/board/{id}");
+    }
+
+    private static string Truncate(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+        return text[..maxLength] + "...";
+    }
+}

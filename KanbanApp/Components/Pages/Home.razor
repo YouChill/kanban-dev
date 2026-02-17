@@ -1,6 +1,9 @@
 @page "/"
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
-
-<MudText Typo="Typo.h4" Class="mb-4">Welcome to KanbanApp</MudText>
-<MudButton Variant="Variant.Filled" Color="Color.Primary">MudBlazor is working!</MudButton>
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("/boards");
+    }
+}

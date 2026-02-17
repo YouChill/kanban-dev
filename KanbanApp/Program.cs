@@ -1,4 +1,6 @@
 using KanbanApp.Components;
+using KanbanApp.Data;
+using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +11,8 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddMudServices();
 
-// TODO: Register application services (e.g., DbContext, repositories, etc.)
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 

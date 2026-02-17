@@ -1,5 +1,7 @@
 using KanbanApp.Components;
 using KanbanApp.Data;
+using KanbanApp.Services;
+using KanbanApp.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 
@@ -13,6 +15,8 @@ builder.Services.AddMudServices();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IBoardService, BoardService>();
 
 var app = builder.Build();
 

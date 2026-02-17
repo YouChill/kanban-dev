@@ -1,0 +1,18 @@
+<header class="topbar">
+    <h1 class="topbar__title">@Title</h1>
+
+    @if (Actions != null)
+    {
+        <div class="topbar__actions">
+            @Actions
+        </div>
+    }
+</header>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+}

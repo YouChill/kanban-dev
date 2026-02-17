@@ -27,3 +27,8 @@ obj/
 
 ## Secrets
 appsettings.*.local.json
+
+## SQLite databases
+*.db
+*.db-shm
+*.db-wal

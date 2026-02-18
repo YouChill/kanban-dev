@@ -1,0 +1,83 @@
+@page "/board/{Id:int}"
+@using KanbanApp.Models
+@using KanbanApp.Services.Interfaces
+@using KanbanApp.Components.Layout
+@using KanbanApp.Components.Board
+@inject IBoardService BoardService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>@(_board?.Name ?? "Tablica") – KanbanApp</PageTitle>
+
+@if (_loading)
+{
+    <div class="boards-loading">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Ładowanie tablicy...</MudText>
+    </div>
+}
+else if (_board is null)
+{
+    <div class="boards-empty">
+        <MudIcon Icon="@Icons.Material.Outlined.Dashboard"
+                 Style="font-size: 80px; color: var(--text-secondary); opacity: 0.4;" />
+        <MudText Typo="Typo.h5" Color="Color.Secondary" Class="mt-4">Tablica nie istnieje</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Tablica o podanym identyfikatorze nie została znaleziona.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoToBoards">
+            Wróć do tablic
+        </MudButton>
+    </div>
+}
+else
+{
+    <KanbanBoard Columns="_board.Columns" />
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [CascadingParameter]
+    private MainLayout? Layout { get; set; }
+
+    private Board? _board;
+    private bool _loading = true;
+    private int _lastLoadedId = -1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != _lastLoadedId)
+        {
+            _lastLoadedId = Id;
+            await LoadBoard();
+        }
+    }
+
+    private async Task LoadBoard()
+    {
+        _loading = true;
+        _board = await BoardService.GetBoardByIdAsync(Id);
+        _loading = false;
+
+        if (_board is not null)
+        {
+            Layout?.SetPageInfo(_board.Name, "Tablice", "/boards");
+        }
+        else
+        {
+            Layout?.SetPageInfo("Tablica nie znaleziona");
+        }
+    }
+
+    private void GoToBoards()
+    {
+        Navigation.NavigateTo("/boards");
+    }
+
+    public void Dispose()
+    {
+        Layout?.SetPageInfo("Tablice");
+    }
+}

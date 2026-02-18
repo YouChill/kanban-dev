@@ -1,0 +1,72 @@
+@using KanbanApp.Models
+@using KanbanApp.Models.Enums
+
+<div class="kanban-board">
+    @foreach (var column in Columns.OrderBy(c => c.Order))
+    {
+        <div class="kanban-column" style="border-top: 3px solid @(column.Color ?? "var(--accent)")">
+            <div class="kanban-column__header">
+                <span class="kanban-column__name">@column.Name</span>
+                <span class="kanban-column__count">@column.Tasks.Count</span>
+                @if (column.WipLimit.HasValue)
+                {
+                    <span class="kanban-column__wip" title="Limit WIP">/ @column.WipLimit</span>
+                }
+            </div>
+
+            <div class="kanban-column__cards">
+                @foreach (var task in column.Tasks.OrderBy(t => t.Order))
+                {
+                    <div class="kanban-card">
+                        <div class="kanban-card__title">@task.Title</div>
+
+                        @if (task.Tags.Count > 0)
+                        {
+                            <div class="kanban-card__tags">
+                                @foreach (var tag in task.Tags)
+                                {
+                                    <span class="kanban-card__tag"
+                                          style="background-color: @(tag.Color ?? "#6366f1")20; color: @(tag.Color ?? "#6366f1")">
+                                        @tag.Name
+                                    </span>
+                                }
+                            </div>
+                        }
+
+                        <div class="kanban-card__meta">
+                            <span class="kanban-card__priority kanban-card__priority--@task.Priority.ToString().ToLower()">
+                                @GetPriorityLabel(task.Priority)
+                            </span>
+                            @if (task.DueDate.HasValue)
+                            {
+                                <span class="kanban-card__due @(task.DueDate.Value < DateTime.UtcNow ? "kanban-card__due--overdue" : "")">
+                                    @task.DueDate.Value.ToString("dd.MM")
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <button class="kanban-column__add-card">+ Dodaj kartę</button>
+        </div>
+    }
+
+    <div class="kanban-add-column">
+        <button class="kanban-add-column__btn">+ Dodaj kolumnę</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<Column> Columns { get; set; } = [];
+
+    private static string GetPriorityLabel(Priority priority) => priority switch
+    {
+        Priority.Low => "Niski",
+        Priority.Medium => "Średni",
+        Priority.High => "Wysoki",
+        Priority.Critical => "Krytyczny",
+        _ => priority.ToString()
+    };
+}

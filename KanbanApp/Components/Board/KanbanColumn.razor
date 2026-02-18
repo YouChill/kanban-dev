@@ -2,6 +2,7 @@
 @using KanbanApp.Models.Enums
 @using KanbanApp.Services.Interfaces
 @inject IColumnService ColumnService
+@inject IDialogService DialogService
 
 <div class="kanban-column @WipCssClass" style="border-top: 3px solid @(Column.Color ?? "var(--accent)")">
     <div class="kanban-column__header">
@@ -87,8 +88,20 @@
 
     private async Task HandleEdit()
     {
-        // Edit functionality will be implemented in a future issue
-        await Task.CompletedTask;
+        var parameters = new DialogParameters
+        {
+            ["ColumnId"] = Column.Id,
+            ["Name"] = Column.Name,
+            ["Color"] = Column.Color,
+            ["WipLimit"] = Column.WipLimit
+        };
+        var dialog = await DialogService.ShowAsync<EditColumnDialog>("Edytuj kolumnę", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await OnColumnChanged.InvokeAsync();
+        }
     }
 
     private async Task HandleDelete()

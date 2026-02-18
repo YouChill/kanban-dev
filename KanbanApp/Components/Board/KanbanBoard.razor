@@ -1,4 +1,5 @@
 @using KanbanApp.Models
+@inject IDialogService DialogService
 
 <div class="kanban-board">
     @foreach (var column in Columns.OrderBy(c => c.Order))
@@ -7,7 +8,7 @@
     }
 
     <div class="kanban-add-column">
-        <button class="kanban-add-column__btn">+ Dodaj kolumnę</button>
+        <button class="kanban-add-column__btn" @onclick="OpenNewColumnDialog">+ Dodaj kolumnę</button>
     </div>
 </div>
 
@@ -16,5 +17,20 @@
     public List<Column> Columns { get; set; } = [];
 
     [Parameter]
+    public int BoardId { get; set; }
+
+    [Parameter]
     public EventCallback OnColumnChanged { get; set; }
+
+    private async Task OpenNewColumnDialog()
+    {
+        var parameters = new DialogParameters { ["BoardId"] = BoardId };
+        var dialog = await DialogService.ShowAsync<NewColumnDialog>("Nowa kolumna", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await OnColumnChanged.InvokeAsync();
+        }
+    }
 }

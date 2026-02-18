@@ -1,0 +1,55 @@
+@using KanbanApp.Models
+@using KanbanApp.Models.Enums
+
+<div class="task-card task-card--@Task.Priority.ToString().ToLower()" @onclick="HandleClick">
+    <div class="task-card__title">@Task.Title</div>
+
+    @if (Task.Tags.Count > 0)
+    {
+        <div class="task-card__tags">
+            @foreach (var tag in Task.Tags)
+            {
+                <span class="task-card__tag"
+                      style="background-color: @(tag.Color ?? "#6366f1")20; color: @(tag.Color ?? "#6366f1")">
+                    @tag.Name
+                </span>
+            }
+        </div>
+    }
+
+    <div class="task-card__meta">
+        <PriorityBadge Priority="Task.Priority" />
+
+        <div class="task-card__meta-right">
+            @if (Task.ChecklistItems.Count > 0)
+            {
+                var done = Task.ChecklistItems.Count(c => c.IsDone);
+                var total = Task.ChecklistItems.Count;
+                <span class="task-card__checklist @(done == total ? "task-card__checklist--done" : "")">
+                    ✓ @done/@total
+                </span>
+            }
+
+            @if (Task.DueDate.HasValue)
+            {
+                var isOverdue = Task.DueDate.Value < DateTime.UtcNow && Task.CompletedAt is null;
+                <span class="task-card__due @(isOverdue ? "task-card__due--overdue" : "")">
+                    @Task.DueDate.Value.ToString("dd MMM")
+                </span>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TaskItem Task { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<TaskItem> OnClick { get; set; }
+
+    private async System.Threading.Tasks.Task HandleClick()
+    {
+        await OnClick.InvokeAsync(Task);
+    }
+}

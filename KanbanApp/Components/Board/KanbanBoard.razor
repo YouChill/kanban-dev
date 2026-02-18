@@ -1,16 +1,29 @@
 @using KanbanApp.Models
+@using KanbanApp.Services.Interfaces
 @inject IDialogService DialogService
+@inject ITaskService TaskService
+@inject ISnackbar Snackbar
 
-<div class="kanban-board">
-    @foreach (var column in Columns.OrderBy(c => c.Order))
-    {
-        <KanbanColumn Column="column" OnColumnChanged="OnColumnChanged" />
-    }
+<MudDropContainer T="TaskItem"
+                  Items="AllTasks"
+                  ItemsSelector="@((item, zone) => item.ColumnId.ToString() == zone)"
+                  ItemDropped="OnTaskDropped"
+                  DraggingClass="task-card--dragging"
+                  Class="kanban-board">
+    <ChildContent>
+        @foreach (var column in Columns.OrderBy(c => c.Order))
+        {
+            <KanbanColumn Column="column" OnColumnChanged="OnColumnChanged" />
+        }
 
-    <div class="kanban-add-column">
-        <button class="kanban-add-column__btn" @onclick="OpenNewColumnDialog">+ Dodaj kolumnę</button>
-    </div>
-</div>
+        <div class="kanban-add-column">
+            <button class="kanban-add-column__btn" @onclick="OpenNewColumnDialog">+ Dodaj kolumnę</button>
+        </div>
+    </ChildContent>
+    <ItemRenderer>
+        <TaskCard Task="@context" OnClick="HandleTaskClick" />
+    </ItemRenderer>
+</MudDropContainer>
 
 @code {
     [Parameter, EditorRequired]
@@ -21,6 +34,39 @@
 
     [Parameter]
     public EventCallback OnColumnChanged { get; set; }
+
+    private List<TaskItem> AllTasks =>
+        Columns.SelectMany(c => c.Tasks).OrderBy(t => t.Order).ToList();
+
+    private async Task OnTaskDropped(MudItemDropInfo<TaskItem> dropItem)
+    {
+        if (dropItem.Item is null) return;
+
+        var targetColumnId = int.Parse(dropItem.DropzoneIdentifier);
+        var movingAcrossColumns = dropItem.Item.ColumnId != targetColumnId;
+
+        if (movingAcrossColumns && !await TaskService.CanMoveToColumnAsync(targetColumnId))
+        {
+            Snackbar.Add("Kolumna osiągnęła limit WIP", Severity.Warning);
+            return;
+        }
+
+        // Update local state for immediate UI feedback
+        dropItem.Item.ColumnId = targetColumnId;
+        dropItem.Item.Order = dropItem.IndexInZone;
+
+        // Persist to database
+        await TaskService.MoveTaskAsync(dropItem.Item.Id, targetColumnId, dropItem.IndexInZone);
+
+        // Reload to sync full state
+        await OnColumnChanged.InvokeAsync();
+    }
+
+    private async Task HandleTaskClick(TaskItem task)
+    {
+        // TaskDetailDialog will be implemented in a future issue
+        await Task.CompletedTask;
+    }
 
     private async Task OpenNewColumnDialog()
     {

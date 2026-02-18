@@ -5,33 +5,40 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<CascadingValue Value="_sidebarCollapsed" Name="SidebarCollapsed">
-    <div class="app-layout">
-        <Sidebar Collapsed="_sidebarCollapsed" OnToggle="ToggleSidebar" />
+<CascadingValue Value="this" IsFixed="true">
+    <CascadingValue Value="_sidebarCollapsed" Name="SidebarCollapsed">
+        <div class="app-layout">
+            <Sidebar Collapsed="_sidebarCollapsed" OnToggle="ToggleSidebar" />
 
-        <div class="app-layout__main">
-            <TopBar Title="Tablice" />
+            <div class="app-layout__main">
+                <TopBar Title="@_pageTitle"
+                        BreadcrumbText="@_breadcrumbText"
+                        BreadcrumbHref="@_breadcrumbHref" />
 
-            <main class="app-layout__content">
-                @Body
-            </main>
+                <main class="app-layout__content">
+                    @Body
+                </main>
+            </div>
         </div>
-    </div>
 
-    @if (_sidebarCollapsed)
-    {
-        <button class="sidebar-expand" @onclick="ToggleSidebar" title="Rozwiń sidebar">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-        </button>
-    }
+        @if (_sidebarCollapsed)
+        {
+            <button class="sidebar-expand" @onclick="ToggleSidebar" title="Rozwiń sidebar">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+            </button>
+        }
+    </CascadingValue>
 </CascadingValue>
 
 @code {
     private bool _sidebarCollapsed;
+    private string _pageTitle = "Tablice";
+    private string? _breadcrumbText;
+    private string? _breadcrumbHref;
 
     private readonly MudTheme _theme = new()
     {
@@ -43,6 +50,14 @@
             AppbarBackground = "#ffffff",
         }
     };
+
+    public void SetPageInfo(string title, string? breadcrumbText = null, string? breadcrumbHref = null)
+    {
+        _pageTitle = title;
+        _breadcrumbText = breadcrumbText;
+        _breadcrumbHref = breadcrumbHref;
+        StateHasChanged();
+    }
 
     private void ToggleSidebar()
     {

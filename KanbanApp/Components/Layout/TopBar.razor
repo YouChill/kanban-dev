@@ -1,4 +1,12 @@
 <header class="topbar">
+    @if (!string.IsNullOrEmpty(BreadcrumbHref))
+    {
+        <div class="topbar__breadcrumb">
+            <a href="@BreadcrumbHref" class="topbar__breadcrumb-link">@BreadcrumbText</a>
+            <span class="topbar__breadcrumb-sep">›</span>
+        </div>
+    }
+
     <h1 class="topbar__title">@Title</h1>
 
     @if (Actions != null)
@@ -12,6 +20,12 @@
 @code {
     [Parameter]
     public string? Title { get; set; }
+
+    [Parameter]
+    public string? BreadcrumbText { get; set; }
+
+    [Parameter]
+    public string? BreadcrumbHref { get; set; }
 
     [Parameter]
     public RenderFragment? Actions { get; set; }

@@ -92,7 +92,7 @@
         {
             ["ColumnId"] = Column.Id,
             ["Name"] = Column.Name,
-            ["Color"] = Column.Color,
+            ["ColumnColor"] = Column.Color,
             ["WipLimit"] = Column.WipLimit
         };
         var dialog = await DialogService.ShowAsync<EditColumnDialog>("Edytuj kolumnę", parameters);

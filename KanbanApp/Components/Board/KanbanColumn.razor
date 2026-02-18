@@ -1,0 +1,117 @@
+@using KanbanApp.Models
+@using KanbanApp.Models.Enums
+@using KanbanApp.Services.Interfaces
+@inject IColumnService ColumnService
+
+<div class="kanban-column @WipCssClass" style="border-top: 3px solid @(Column.Color ?? "var(--accent)")">
+    <div class="kanban-column__header">
+        <span class="kanban-column__dot" style="background-color: @(Column.Color ?? "var(--accent)")"></span>
+        <span class="kanban-column__name">@Column.Name</span>
+        <span class="kanban-column__badge @WipBadgeCssClass">
+            @Column.Tasks.Count
+            @if (Column.WipLimit.HasValue)
+            {
+                <span>/ @Column.WipLimit</span>
+            }
+        </span>
+        <MudMenu Icon="@Icons.Material.Filled.MoreHoriz"
+                 Size="Size.Small"
+                 Dense="true"
+                 AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight"
+                 Class="kanban-column__menu">
+            <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                         OnClick="HandleEdit">Edytuj</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                         OnClick="HandleDelete"
+                         Style="color: #ef4444;">Usuń</MudMenuItem>
+        </MudMenu>
+    </div>
+
+    <div class="kanban-column__cards">
+        @foreach (var task in Column.Tasks.OrderBy(t => t.Order))
+        {
+            <div class="kanban-card">
+                <div class="kanban-card__title">@task.Title</div>
+
+                @if (task.Tags.Count > 0)
+                {
+                    <div class="kanban-card__tags">
+                        @foreach (var tag in task.Tags)
+                        {
+                            <span class="kanban-card__tag"
+                                  style="background-color: @(tag.Color ?? "#6366f1")20; color: @(tag.Color ?? "#6366f1")">
+                                @tag.Name
+                            </span>
+                        }
+                    </div>
+                }
+
+                <div class="kanban-card__meta">
+                    <span class="kanban-card__priority kanban-card__priority--@task.Priority.ToString().ToLower()">
+                        @GetPriorityLabel(task.Priority)
+                    </span>
+                    @if (task.DueDate.HasValue)
+                    {
+                        <span class="kanban-card__due @(task.DueDate.Value < DateTime.UtcNow ? "kanban-card__due--overdue" : "")">
+                            @task.DueDate.Value.ToString("dd.MM")
+                        </span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <button class="kanban-column__add-task" @onclick="HandleAddTask">+ Dodaj zadanie</button>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Column Column { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnColumnChanged { get; set; }
+
+    private string WipBadgeCssClass => Column.WipLimit switch
+    {
+        null => "kanban-column__badge--default",
+        var limit when Column.Tasks.Count > limit => "kanban-column__badge--exceeded",
+        var limit when Column.Tasks.Count == limit => "kanban-column__badge--at-limit",
+        _ => "kanban-column__badge--default"
+    };
+
+    private string WipCssClass =>
+        Column.WipLimit.HasValue && Column.Tasks.Count > Column.WipLimit.Value
+            ? "kanban-column--wip-exceeded"
+            : "";
+
+    private async Task HandleEdit()
+    {
+        // Edit functionality will be implemented in a future issue
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleDelete()
+    {
+        var deleted = await ColumnService.DeleteColumnAsync(Column.Id);
+        if (deleted)
+        {
+            await OnColumnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task HandleAddTask()
+    {
+        // Add task functionality will be implemented in a future issue (TaskCard)
+        await Task.CompletedTask;
+    }
+
+    private static string GetPriorityLabel(Priority priority) => priority switch
+    {
+        Priority.Low => "Niski",
+        Priority.Medium => "Średni",
+        Priority.High => "Wysoki",
+        Priority.Critical => "Krytyczny",
+        _ => priority.ToString()
+    };
+}

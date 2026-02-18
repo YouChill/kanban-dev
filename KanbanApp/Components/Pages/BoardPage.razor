@@ -32,7 +32,7 @@ else if (_board is null)
 }
 else
 {
-    <KanbanBoard Columns="_board.Columns" />
+    <KanbanBoard Columns="_board.Columns" OnColumnChanged="LoadBoard" />
 }
 
 @code {

@@ -349,25 +349,75 @@ h1:focus {
     max-height: 100%;
     border: 1px solid var(--border);
     overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.kanban-column--wip-exceeded {
+    border-color: #fca5a5;
 }
 
 .kanban-column__header {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 14px;
+    padding: 14px 14px 10px;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.kanban-column__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
     flex-shrink: 0;
 }
 
 .kanban-column__name {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-primary);
     flex: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.kanban-column__badge {
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 1px 8px;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.kanban-column__badge--default {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.kanban-column__badge--at-limit {
+    background: #fff7ed;
+    color: #f97316;
+}
+
+.kanban-column__badge--exceeded {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.kanban-column__menu {
+    flex-shrink: 0;
+}
+
+.kanban-column__menu .mud-icon-button {
+    padding: 4px;
+    color: var(--text-secondary);
+}
+
+.kanban-column__menu .mud-icon-button:hover {
+    color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.04);
 }
 
 .kanban-column__count {
@@ -396,22 +446,23 @@ h1:focus {
     min-height: 40px;
 }
 
-.kanban-column__add-card {
+.kanban-column__add-task {
     background: none;
     border: none;
+    border-top: 2px dashed var(--border);
     width: 100%;
     padding: 10px 14px;
     text-align: left;
     font-size: 13px;
     color: var(--text-secondary);
     cursor: pointer;
-    border-top: 1px solid var(--border);
-    transition: color var(--transition-fast), background var(--transition-fast);
+    transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
     flex-shrink: 0;
 }
 
-.kanban-column__add-card:hover {
+.kanban-column__add-task:hover {
     color: var(--accent);
+    border-color: var(--accent);
     background: var(--accent-subtle);
 }
 

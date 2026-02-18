@@ -32,34 +32,7 @@
     <div class="kanban-column__cards">
         @foreach (var task in Column.Tasks.OrderBy(t => t.Order))
         {
-            <div class="kanban-card">
-                <div class="kanban-card__title">@task.Title</div>
-
-                @if (task.Tags.Count > 0)
-                {
-                    <div class="kanban-card__tags">
-                        @foreach (var tag in task.Tags)
-                        {
-                            <span class="kanban-card__tag"
-                                  style="background-color: @(tag.Color ?? "#6366f1")20; color: @(tag.Color ?? "#6366f1")">
-                                @tag.Name
-                            </span>
-                        }
-                    </div>
-                }
-
-                <div class="kanban-card__meta">
-                    <span class="kanban-card__priority kanban-card__priority--@task.Priority.ToString().ToLower()">
-                        @GetPriorityLabel(task.Priority)
-                    </span>
-                    @if (task.DueDate.HasValue)
-                    {
-                        <span class="kanban-card__due @(task.DueDate.Value < DateTime.UtcNow ? "kanban-card__due--overdue" : "")">
-                            @task.DueDate.Value.ToString("dd.MM")
-                        </span>
-                    }
-                </div>
-            </div>
+            <TaskCard Task="task" OnClick="HandleTaskClick" />
         }
     </div>
 
@@ -115,16 +88,13 @@
 
     private async Task HandleAddTask()
     {
-        // Add task functionality will be implemented in a future issue (TaskCard)
+        // Add task functionality will be implemented in a future issue
         await Task.CompletedTask;
     }
 
-    private static string GetPriorityLabel(Priority priority) => priority switch
+    private async Task HandleTaskClick(TaskItem task)
     {
-        Priority.Low => "Niski",
-        Priority.Medium => "Średni",
-        Priority.High => "Wysoki",
-        Priority.Critical => "Krytyczny",
-        _ => priority.ToString()
-    };
+        // TaskDetailDialog will be implemented in a future issue
+        await Task.CompletedTask;
+    }
 }

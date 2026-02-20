@@ -492,6 +492,9 @@ h1:focus {
 
 .task-card--dragging {
     opacity: 0.5;
+    border: 1px dashed var(--accent);
+    box-shadow: none;
+    transform: none;
 }
 
 .task-card--low {
@@ -613,6 +616,19 @@ h1:focus {
 
 .priority-badge--critical .priority-badge__dot {
     background: #ef4444;
+}
+
+/* ===== Drag & Drop (additional) ===== */
+.kanban-column__cards .mud-drop-zone-drag-block {
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--accent-subtle);
+    min-height: 48px;
+}
+
+.kanban-column__cards.mud-drop-zone-drag {
+    background: rgba(99, 102, 241, 0.04);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 /* ===== Add Column button ===== */

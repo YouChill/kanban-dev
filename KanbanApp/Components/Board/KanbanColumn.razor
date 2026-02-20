@@ -31,8 +31,8 @@
 
     <MudDropZone T="TaskItem"
                  Identifier="@Column.Id.ToString()"
-                 Class="kanban-column__cards"
-                 AllowReorder="true" />
+                 CanDropClass="kanban-column__cards--drop-ready"
+                 Class="kanban-column__cards" />
 
     <button class="kanban-column__add-task" @onclick="HandleAddTask">+ Dodaj zadanie</button>
 </div>
@@ -87,12 +87,6 @@
     private async Task HandleAddTask()
     {
         // Add task functionality will be implemented in a future issue
-        await Task.CompletedTask;
-    }
-
-    private async Task HandleTaskClick(TaskItem task)
-    {
-        // TaskDetailDialog will be implemented in a future issue
         await Task.CompletedTask;
     }
 }

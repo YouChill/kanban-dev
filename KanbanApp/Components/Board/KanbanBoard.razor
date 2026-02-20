@@ -5,9 +5,10 @@
 @inject ISnackbar Snackbar
 
 <MudDropContainer T="TaskItem"
-                  Items="_allTasks"
-                  ItemsSelector="@((task, zone) => task.ColumnId.ToString() == zone)"
-                  ItemDropped="OnItemDropped"
+                  Items="AllTasks"
+                  ItemsSelector="@((item, zone) => item.ColumnId.ToString() == zone)"
+                  ItemDropped="OnTaskDropped"
+                  DraggingClass="task-card--dragging"
                   Class="kanban-board">
     <ChildContent>
         @foreach (var column in Columns.OrderBy(c => c.Order))
@@ -20,7 +21,7 @@
         </div>
     </ChildContent>
     <ItemRenderer>
-        <TaskCard Task="context" />
+        <TaskCard Task="@context" OnClick="HandleTaskClick" />
     </ItemRenderer>
 </MudDropContainer>
 
@@ -34,30 +35,37 @@
     [Parameter]
     public EventCallback OnColumnChanged { get; set; }
 
-    private List<TaskItem> _allTasks = [];
+    private List<TaskItem> AllTasks =>
+        Columns.SelectMany(c => c.Tasks).OrderBy(t => t.Order).ToList();
 
-    protected override void OnParametersSet()
+    private async Task OnTaskDropped(MudItemDropInfo<TaskItem> dropItem)
     {
-        _allTasks = Columns.SelectMany(c => c.Tasks).OrderBy(t => t.Order).ToList();
-    }
+        if (dropItem.Item is null) return;
 
-    private async Task OnItemDropped(MudItemDropInfo<TaskItem> info)
-    {
-        var task = info.Item;
-        var targetColumnId = int.Parse(info.DropzoneIdentifier);
-        var newOrder = info.IndexInZone;
+        var targetColumnId = int.Parse(dropItem.DropzoneIdentifier);
+        var movingAcrossColumns = dropItem.Item.ColumnId != targetColumnId;
 
-        // Optimistic UI update
-        task.ColumnId = targetColumnId;
-        task.Order = newOrder;
-
-        var success = await TaskService.MoveTaskAsync(task.Id, targetColumnId, newOrder);
-        if (!success)
+        if (movingAcrossColumns && !await TaskService.CanMoveToColumnAsync(targetColumnId))
         {
-            Snackbar.Add("Nie udało się przenieść zadania — przekroczony limit WIP", Severity.Warning);
+            Snackbar.Add("Kolumna osiągnęła limit WIP", Severity.Warning);
+            return;
         }
 
+        // Update local state for immediate UI feedback
+        dropItem.Item.ColumnId = targetColumnId;
+        dropItem.Item.Order = dropItem.IndexInZone;
+
+        // Persist to database
+        await TaskService.MoveTaskAsync(dropItem.Item.Id, targetColumnId, dropItem.IndexInZone);
+
+        // Reload to sync full state
         await OnColumnChanged.InvokeAsync();
+    }
+
+    private async Task HandleTaskClick(TaskItem task)
+    {
+        // TaskDetailDialog will be implemented in a future issue
+        await Task.CompletedTask;
     }
 
     private async Task OpenNewColumnDialog()

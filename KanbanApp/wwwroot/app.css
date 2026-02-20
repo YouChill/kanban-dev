@@ -444,6 +444,11 @@ h1:focus {
     flex-direction: column;
     gap: 8px;
     min-height: 40px;
+    transition: background 0.15s ease;
+}
+
+.kanban-column__cards--drop-ready {
+    background: var(--accent-subtle);
 }
 
 .kanban-column__add-task {
@@ -483,6 +488,13 @@ h1:focus {
 .task-card:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
+}
+
+.task-card--dragging {
+    opacity: 0.5;
+    border: 1px dashed var(--accent);
+    box-shadow: none;
+    transform: none;
 }
 
 .task-card--low {
@@ -606,14 +618,7 @@ h1:focus {
     background: #ef4444;
 }
 
-/* ===== Drag & Drop ===== */
-.mud-drop-item-dragging .task-card {
-    opacity: 0.5;
-    border: 1px dashed var(--accent);
-    box-shadow: none;
-    transform: none;
-}
-
+/* ===== Drag & Drop (additional) ===== */
 .kanban-column__cards .mud-drop-zone-drag-block {
     border: 2px dashed var(--accent);
     border-radius: var(--radius-sm);

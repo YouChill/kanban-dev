@@ -1,16 +1,56 @@
 @using KanbanApp.Models
+@using KanbanApp.Models.Enums
+@using KanbanApp.Services.Interfaces
 @inject IDialogService DialogService
+@inject ITaskService TaskService
+@inject ISnackbar Snackbar
 
-<div class="kanban-board">
-    @foreach (var column in Columns.OrderBy(c => c.Order))
-    {
-        <KanbanColumn Column="column" OnColumnChanged="OnColumnChanged" />
-    }
+<MudDropContainer T="TaskItem"
+                  Items="_allTasks"
+                  ItemsSelector="@((task, zone) => task.ColumnId.ToString() == zone)"
+                  ItemDropped="OnItemDropped"
+                  Class="kanban-board">
+    <ChildContent>
+        @foreach (var column in Columns.OrderBy(c => c.Order))
+        {
+            <KanbanColumn Column="column" OnColumnChanged="OnColumnChanged" />
+        }
 
-    <div class="kanban-add-column">
-        <button class="kanban-add-column__btn" @onclick="OpenNewColumnDialog">+ Dodaj kolumnę</button>
-    </div>
-</div>
+        <div class="kanban-add-column">
+            <button class="kanban-add-column__btn" @onclick="OpenNewColumnDialog">+ Dodaj kolumnę</button>
+        </div>
+    </ChildContent>
+    <ItemRenderer>
+        <div class="kanban-card">
+            <div class="kanban-card__title">@context.Title</div>
+
+            @if (context.Tags.Count > 0)
+            {
+                <div class="kanban-card__tags">
+                    @foreach (var tag in context.Tags)
+                    {
+                        <span class="kanban-card__tag"
+                              style="background-color: @(tag.Color ?? "#6366f1")20; color: @(tag.Color ?? "#6366f1")">
+                            @tag.Name
+                        </span>
+                    }
+                </div>
+            }
+
+            <div class="kanban-card__meta">
+                <span class="kanban-card__priority kanban-card__priority--@context.Priority.ToString().ToLower()">
+                    @GetPriorityLabel(context.Priority)
+                </span>
+                @if (context.DueDate.HasValue)
+                {
+                    <span class="kanban-card__due @(context.DueDate.Value < DateTime.UtcNow ? "kanban-card__due--overdue" : "")">
+                        @context.DueDate.Value.ToString("dd.MM")
+                    </span>
+                }
+            </div>
+        </div>
+    </ItemRenderer>
+</MudDropContainer>
 
 @code {
     [Parameter, EditorRequired]
@@ -21,6 +61,32 @@
 
     [Parameter]
     public EventCallback OnColumnChanged { get; set; }
+
+    private List<TaskItem> _allTasks = [];
+
+    protected override void OnParametersSet()
+    {
+        _allTasks = Columns.SelectMany(c => c.Tasks).OrderBy(t => t.Order).ToList();
+    }
+
+    private async Task OnItemDropped(MudItemDropInfo<TaskItem> info)
+    {
+        var task = info.Item;
+        var targetColumnId = int.Parse(info.DropzoneIdentifier);
+        var newOrder = info.IndexInZone;
+
+        // Optimistic UI update
+        task.ColumnId = targetColumnId;
+        task.Order = newOrder;
+
+        var success = await TaskService.MoveTaskAsync(task.Id, targetColumnId, newOrder);
+        if (!success)
+        {
+            Snackbar.Add("Nie udało się przenieść zadania — przekroczony limit WIP", Severity.Warning);
+        }
+
+        await OnColumnChanged.InvokeAsync();
+    }
 
     private async Task OpenNewColumnDialog()
     {
@@ -33,4 +99,13 @@
             await OnColumnChanged.InvokeAsync();
         }
     }
+
+    private static string GetPriorityLabel(Priority priority) => priority switch
+    {
+        Priority.Low => "Niski",
+        Priority.Medium => "Średni",
+        Priority.High => "Wysoki",
+        Priority.Critical => "Krytyczny",
+        _ => priority.ToString()
+    };
 }

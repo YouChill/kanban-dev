@@ -1,0 +1,20 @@
+@using KanbanApp.Models.Enums
+
+<span class="priority-badge priority-badge--@Priority.ToString().ToLower()">
+    <span class="priority-badge__dot"></span>
+    @GetLabel(Priority)
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public Priority Priority { get; set; }
+
+    private static string GetLabel(Priority priority) => priority switch
+    {
+        Priority.Low => "Niski",
+        Priority.Medium => "Średni",
+        Priority.High => "Wysoki",
+        Priority.Critical => "Krytyczny",
+        _ => priority.ToString()
+    };
+}

@@ -1,5 +1,4 @@
 @using KanbanApp.Models
-@using KanbanApp.Models.Enums
 @using KanbanApp.Services.Interfaces
 @inject IDialogService DialogService
 @inject ITaskService TaskService
@@ -21,34 +20,7 @@
         </div>
     </ChildContent>
     <ItemRenderer>
-        <div class="kanban-card">
-            <div class="kanban-card__title">@context.Title</div>
-
-            @if (context.Tags.Count > 0)
-            {
-                <div class="kanban-card__tags">
-                    @foreach (var tag in context.Tags)
-                    {
-                        <span class="kanban-card__tag"
-                              style="background-color: @(tag.Color ?? "#6366f1")20; color: @(tag.Color ?? "#6366f1")">
-                            @tag.Name
-                        </span>
-                    }
-                </div>
-            }
-
-            <div class="kanban-card__meta">
-                <span class="kanban-card__priority kanban-card__priority--@context.Priority.ToString().ToLower()">
-                    @GetPriorityLabel(context.Priority)
-                </span>
-                @if (context.DueDate.HasValue)
-                {
-                    <span class="kanban-card__due @(context.DueDate.Value < DateTime.UtcNow ? "kanban-card__due--overdue" : "")">
-                        @context.DueDate.Value.ToString("dd.MM")
-                    </span>
-                }
-            </div>
-        </div>
+        <TaskCard Task="context" />
     </ItemRenderer>
 </MudDropContainer>
 
@@ -99,13 +71,4 @@
             await OnColumnChanged.InvokeAsync();
         }
     }
-
-    private static string GetPriorityLabel(Priority priority) => priority switch
-    {
-        Priority.Low => "Niski",
-        Priority.Medium => "Średni",
-        Priority.High => "Wysoki",
-        Priority.Critical => "Krytyczny",
-        _ => priority.ToString()
-    };
 }

@@ -1,8 +1,11 @@
 @using KanbanApp.Models
+@using KanbanApp.Services
 @using KanbanApp.Services.Interfaces
+@implements IDisposable
 @inject IDialogService DialogService
 @inject ITaskService TaskService
 @inject ISnackbar Snackbar
+@inject BoardFilterState FilterState
 
 <MudDropContainer @ref="_dropContainer"
                   T="TaskItem"
@@ -39,11 +42,33 @@
     private MudDropContainer<TaskItem>? _dropContainer;
 
     private List<TaskItem> AllTasks =>
-        Columns.SelectMany(c => c.Tasks).OrderBy(t => t.Order).ToList();
+        Columns.SelectMany(c => c.Tasks)
+            .Where(t => FilterState.Matches(t))
+            .OrderBy(t => t.Order)
+            .ToList();
+
+    protected override void OnInitialized()
+    {
+        FilterState.OnFilterChanged += HandleFilterChanged;
+    }
 
     protected override void OnParametersSet()
     {
         _dropContainer?.Refresh();
+    }
+
+    private void HandleFilterChanged()
+    {
+        InvokeAsync(() =>
+        {
+            _dropContainer?.Refresh();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        FilterState.OnFilterChanged -= HandleFilterChanged;
     }
 
     private async Task HandleColumnChanged()

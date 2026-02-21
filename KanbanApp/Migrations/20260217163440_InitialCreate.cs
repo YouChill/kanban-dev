@@ -151,7 +151,8 @@ namespace KanbanApp.Migrations
                     { 3, "#8b5cf6", "db" },
                     { 4, "#ec4899", "design" },
                     { 5, "#16a34a", "devops" },
-                    { 6, "#d97706", "setup" }
+                    { 6, "#d97706", "setup" },
+                    { 7, "#0891b2", "testing" }
                 });
 
             migrationBuilder.InsertData(

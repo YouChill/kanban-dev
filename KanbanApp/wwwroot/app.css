@@ -451,6 +451,10 @@ h1:focus {
     background: var(--accent-subtle);
 }
 
+.kanban-column__footer {
+    flex-shrink: 0;
+}
+
 .kanban-column__add-task {
     background: none;
     border: none;
@@ -469,6 +473,78 @@ h1:focus {
     color: var(--accent);
     border-color: var(--accent);
     background: var(--accent-subtle);
+}
+
+/* Inline task input */
+.kanban-column__inline-input {
+    border-top: 2px solid transparent;
+    padding: 8px;
+    transition: border-color var(--transition-fast);
+}
+
+.kanban-column__inline-input--active {
+    border-color: var(--accent);
+    animation: inline-input-appear 0.15s ease;
+}
+
+@keyframes inline-input-appear {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.kanban-column__task-field .mud-input-outlined-border {
+    border-color: var(--accent) !important;
+    transition: border-color var(--transition-fast);
+}
+
+/* ===== Color Picker ===== */
+.color-picker__presets {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.color-picker__swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+    padding: 0;
+}
+
+.color-picker__swatch:hover {
+    transform: scale(1.15);
+    box-shadow: var(--shadow-md);
+}
+
+.color-picker__swatch--active {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 2px var(--surface-card), 0 0 0 4px var(--text-primary);
+}
+
+.color-picker__preview {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    transition: background-color var(--transition-fast);
+}
+
+/* ===== Delete Column Dialog ===== */
+.delete-column-dialog {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 8px 0;
 }
 
 /* ===== Task Card ===== */

@@ -54,31 +54,63 @@
 
                     <div class="task-detail__section">
                         <MudText Typo="Typo.caption" Class="task-detail__label">Checklista</MudText>
-                        @if (_task.ChecklistItems.Count > 0)
-                        {
+                        @{
                             var done = _task.ChecklistItems.Count(c => c.IsDone);
                             var total = _task.ChecklistItems.Count;
-                            <MudProgressLinear Value="@((double)done / total * 100)" Color="Color.Primary"
-                                              Rounded="true" Size="Size.Small" Class="mb-2" />
-                            @foreach (var item in _task.ChecklistItems)
-                            {
-                                <div class="task-detail__checklist-item">
-                                    <MudIcon Icon="@(item.IsDone ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)"
-                                             Size="Size.Small"
-                                             Color="@(item.IsDone ? Color.Success : Color.Default)" />
-                                    <MudText Typo="Typo.body2"
-                                             Class="@(item.IsDone ? "task-detail__checklist-done" : "")">
-                                        @item.Text
-                                    </MudText>
-                                </div>
-                            }
                         }
-                        else
+                        @if (total > 0)
                         {
-                            <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
-                                Brak elementów checklisty
-                            </MudText>
+                            <div class="task-detail__checklist-progress">
+                                <div class="task-detail__checklist-progress-bar">
+                                    <div class="task-detail__checklist-progress-fill"
+                                         style="width: @((double)done / total * 100)%"></div>
+                                </div>
+                                <MudText Typo="Typo.caption" Class="task-detail__checklist-progress-text">
+                                    @done z @total
+                                </MudText>
+                            </div>
                         }
+                        @foreach (var item in _task.ChecklistItems)
+                        {
+                            var capturedItem = item;
+                            <div class="task-detail__checklist-item">
+                                <MudIconButton Icon="@(capturedItem.IsDone ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)"
+                                               Size="Size.Small"
+                                               Color="@(capturedItem.IsDone ? Color.Success : Color.Default)"
+                                               OnClick="() => ToggleChecklistItem(capturedItem)" />
+                                @if (_editingChecklistItemId == capturedItem.Id)
+                                {
+                                    <MudTextField @bind-Value="_editingChecklistText"
+                                                  Variant="Variant.Text"
+                                                  Immediate="true"
+                                                  AutoFocus="true"
+                                                  Class="task-detail__checklist-edit-input"
+                                                  OnBlur="() => SaveChecklistItemText(capturedItem)"
+                                                  OnKeyDown="(e) => HandleChecklistEditKeyDown(e, capturedItem)" />
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2"
+                                             Class="@($"task-detail__checklist-text {(capturedItem.IsDone ? "task-detail__checklist-done" : "")}")"
+                                             @onclick="() => StartEditingChecklistItem(capturedItem)">
+                                        @capturedItem.Text
+                                    </MudText>
+                                }
+                                <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                                               Size="Size.Small"
+                                               Class="task-detail__checklist-delete"
+                                               OnClick="() => DeleteChecklistItem(capturedItem)" />
+                            </div>
+                        }
+                        <div class="task-detail__checklist-add">
+                            <MudTextField @bind-Value="_newChecklistText"
+                                          Placeholder="Dodaj element..."
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Immediate="true"
+                                          OnKeyDown="HandleNewChecklistKeyDown"
+                                          Class="task-detail__checklist-add-input" />
+                        </div>
                     </div>
                 </div>
 
@@ -239,6 +271,59 @@
         _dueDateValue = newDate;
         _task.DueDate = newDate;
         await PersistTask();
+    }
+
+    // ── Checklist ──
+
+    private string _newChecklistText = string.Empty;
+    private int? _editingChecklistItemId;
+    private string _editingChecklistText = string.Empty;
+
+    private async Task ToggleChecklistItem(ChecklistItem item)
+    {
+        item.IsDone = !item.IsDone;
+        await TaskService.UpdateChecklistItemAsync(item);
+    }
+
+    private void StartEditingChecklistItem(ChecklistItem item)
+    {
+        _editingChecklistItemId = item.Id;
+        _editingChecklistText = item.Text;
+    }
+
+    private async Task SaveChecklistItemText(ChecklistItem item)
+    {
+        _editingChecklistItemId = null;
+        var trimmed = _editingChecklistText?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed) || trimmed == item.Text)
+            return;
+
+        item.Text = trimmed;
+        await TaskService.UpdateChecklistItemAsync(item);
+    }
+
+    private async Task HandleChecklistEditKeyDown(KeyboardEventArgs e, ChecklistItem item)
+    {
+        if (e.Key == "Enter")
+            await SaveChecklistItemText(item);
+        else if (e.Key == "Escape")
+            _editingChecklistItemId = null;
+    }
+
+    private async Task DeleteChecklistItem(ChecklistItem item)
+    {
+        await TaskService.DeleteChecklistItemAsync(item.Id);
+        _task!.ChecklistItems.Remove(item);
+    }
+
+    private async Task HandleNewChecklistKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newChecklistText))
+        {
+            var newItem = await TaskService.AddChecklistItemAsync(_task!.Id, _newChecklistText.Trim());
+            _task.ChecklistItems.Add(newItem);
+            _newChecklistText = string.Empty;
+        }
     }
 
     // ── Persist & notify ──

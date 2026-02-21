@@ -103,7 +103,7 @@
                         <MudDatePicker Date="_dueDateValue"
                                        DateChanged="SaveDueDate"
                                        Variant="Variant.Outlined"
-                                       Dense="true"
+                                       Margin="Margin.Dense"
                                        Placeholder="Wybierz datę..."
                                        Clearable="true"
                                        DateFormat="dd MMMM yyyy"
@@ -186,8 +186,10 @@
     private async Task SaveTitle()
     {
         _editingTitle = false;
+        if (_task is null) return;
+
         var trimmed = _titleValue?.Trim();
-        if (string.IsNullOrWhiteSpace(trimmed) || trimmed == _task!.Title)
+        if (string.IsNullOrWhiteSpace(trimmed) || trimmed == _task.Title)
         {
             _titleValue = _task.Title;
             return;

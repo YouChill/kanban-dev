@@ -4,6 +4,7 @@
 @inject IColumnService ColumnService
 @inject ITaskService TaskService
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <div class="kanban-column @WipCssClass" style="border-top: 3px solid @(Column.Color ?? "var(--accent)")">
     <div class="kanban-column__header">
@@ -119,6 +120,12 @@
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTaskTitle))
         {
+            if (!await TaskService.CanMoveToColumnAsync(Column.Id))
+            {
+                Snackbar.Add("Kolumna osiągnęła limit WIP — nie można dodać zadania", Severity.Warning);
+                return;
+            }
+
             await TaskService.CreateTaskAsync(Column.Id, _newTaskTitle.Trim(), Priority.Medium);
             _newTaskTitle = string.Empty;
             _isAddingTask = false;

@@ -915,7 +915,12 @@ h1:focus {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    justify-content: flex-start;
     align-items: center;
+}
+
+.task-detail__tags .mud-chip-set {
+    justify-content: flex-start;
 }
 
 .task-detail__tags .mud-chip {

@@ -460,7 +460,8 @@
         var success = await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
         if (success)
         {
-            _task.Tags.Add(tag);
+            if (!_task.Tags.Any(t => t.Id == tag.Id))
+                _task.Tags.Add(tag);
             Snackbar.Add($"Dodano tag \"{tag.Name}\"", Severity.Success, config =>
             {
                 config.ShowTransitionDuration = 200;
@@ -494,7 +495,8 @@
         var tag = await TaskService.CreateTagAsync(_newTagName, _newTagColor);
         _allTags.Add(tag);
         await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
-        _task.Tags.Add(tag);
+        if (!_task.Tags.Any(t => t.Id == tag.Id))
+            _task.Tags.Add(tag);
 
         // Reset create form
         _newTagName = string.Empty;

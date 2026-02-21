@@ -2,7 +2,12 @@
 @using KanbanApp.Models.Enums
 
 <div class="task-card task-card--@Task.Priority.ToString().ToLower()" @onclick="HandleClick">
-    <div class="task-card__title">@Task.Title</div>
+    <div class="task-card__header">
+        <div class="task-card__title">@Task.Title</div>
+        <button class="task-card__delete" @onclick="HandleDelete" @onclick:stopPropagation="true" title="Usuń zadanie">
+            <MudIcon Icon="@Icons.Material.Outlined.Close" Size="Size.Small" />
+        </button>
+    </div>
 
     @if (Task.Tags.Count > 0)
     {
@@ -48,8 +53,16 @@
     [Parameter]
     public EventCallback<TaskItem> OnClick { get; set; }
 
+    [Parameter]
+    public EventCallback<TaskItem> OnDelete { get; set; }
+
     private async System.Threading.Tasks.Task HandleClick()
     {
         await OnClick.InvokeAsync(Task);
+    }
+
+    private async System.Threading.Tasks.Task HandleDelete()
+    {
+        await OnDelete.InvokeAsync(Task);
     }
 }

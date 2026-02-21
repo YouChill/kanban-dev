@@ -589,11 +589,42 @@ h1:focus {
     border-left-color: #ef4444;
 }
 
+.task-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
 .task-card__title {
     font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
     line-height: 1.45;
+    flex: 1;
+}
+
+.task-card__delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.task-card:hover .task-card__delete {
+    opacity: 1;
+}
+
+.task-card__delete:hover {
+    color: #ef4444;
+    background: #fef2f2;
 }
 
 .task-card__tags {

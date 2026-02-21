@@ -4,7 +4,8 @@
 @inject ITaskService TaskService
 @inject ISnackbar Snackbar
 
-<MudDropContainer T="TaskItem"
+<MudDropContainer @ref="_dropContainer"
+                  T="TaskItem"
                   Items="AllTasks"
                   ItemsSelector="@((item, zone) => item.ColumnId.ToString() == zone)"
                   ItemDropped="OnTaskDropped"
@@ -13,7 +14,7 @@
     <ChildContent>
         @foreach (var column in Columns.OrderBy(c => c.Order))
         {
-            <KanbanColumn Column="column" OnColumnChanged="OnColumnChanged" />
+            <KanbanColumn Column="column" OnColumnChanged="HandleColumnChanged" />
         }
 
         <div class="kanban-add-column">
@@ -21,7 +22,7 @@
         </div>
     </ChildContent>
     <ItemRenderer>
-        <TaskCard Task="@context" OnClick="HandleTaskClick" />
+        <TaskCard Task="@context" OnClick="HandleTaskClick" OnDelete="HandleTaskDelete" />
     </ItemRenderer>
 </MudDropContainer>
 
@@ -35,8 +36,16 @@
     [Parameter]
     public EventCallback OnColumnChanged { get; set; }
 
+    private MudDropContainer<TaskItem>? _dropContainer;
+
     private List<TaskItem> AllTasks =>
         Columns.SelectMany(c => c.Tasks).OrderBy(t => t.Order).ToList();
+
+    private async Task HandleColumnChanged()
+    {
+        await OnColumnChanged.InvokeAsync();
+        _dropContainer?.Refresh();
+    }
 
     private async Task OnTaskDropped(MudItemDropInfo<TaskItem> dropItem)
     {
@@ -59,13 +68,28 @@
         await TaskService.MoveTaskAsync(dropItem.Item.Id, targetColumnId, dropItem.IndexInZone);
 
         // Reload to sync full state
-        await OnColumnChanged.InvokeAsync();
+        await HandleColumnChanged();
     }
 
     private async Task HandleTaskClick(TaskItem task)
     {
         // TaskDetailDialog will be implemented in a future issue
         await Task.CompletedTask;
+    }
+
+    private async Task HandleTaskDelete(TaskItem task)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Usuń zadanie",
+            $"Czy na pewno chcesz usunąć zadanie \"{task.Title}\"?",
+            yesText: "Usuń",
+            cancelText: "Anuluj");
+
+        if (confirmed == true)
+        {
+            await TaskService.DeleteTaskAsync(task.Id);
+            await HandleColumnChanged();
+        }
     }
 
     private async Task OpenNewColumnDialog()
@@ -76,7 +100,7 @@
 
         if (result is { Canceled: false })
         {
-            await OnColumnChanged.InvokeAsync();
+            await HandleColumnChanged();
         }
     }
 }

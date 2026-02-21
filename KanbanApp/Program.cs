@@ -19,6 +19,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IBoardService, BoardService>();
 builder.Services.AddScoped<IColumnService, ColumnService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<BoardFilterState>();
 
 var app = builder.Build();
 

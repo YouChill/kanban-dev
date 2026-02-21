@@ -81,11 +81,11 @@
                                 @if (_editingChecklistItemId == capturedItem.Id)
                                 {
                                     <MudTextField @bind-Value="_editingChecklistText"
-                                                  Variant="Variant.Text"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
                                                   Immediate="true"
                                                   AutoFocus="true"
                                                   Class="task-detail__checklist-edit-input"
-                                                  OnBlur="() => SaveChecklistItemText(capturedItem)"
                                                   OnKeyDown="(e) => HandleChecklistEditKeyDown(e, capturedItem)" />
                                 }
                                 else
@@ -305,9 +305,14 @@
     private async Task HandleChecklistEditKeyDown(KeyboardEventArgs e, ChecklistItem item)
     {
         if (e.Key == "Enter")
+        {
             await SaveChecklistItemText(item);
+        }
         else if (e.Key == "Escape")
+        {
+            _editingChecklistText = item.Text;
             _editingChecklistItemId = null;
+        }
     }
 
     private async Task DeleteChecklistItem(ChecklistItem item)
@@ -321,7 +326,10 @@
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newChecklistText))
         {
             var newItem = await TaskService.AddChecklistItemAsync(_task!.Id, _newChecklistText.Trim());
-            _task.ChecklistItems.Add(newItem);
+            // EF Core fix-up adds to _task.ChecklistItems automatically;
+            // guard against environments where it doesn't
+            if (!_task.ChecklistItems.Any(c => c.Id == newItem.Id))
+                _task.ChecklistItems.Add(newItem);
             _newChecklistText = string.Empty;
         }
     }

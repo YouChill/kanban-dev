@@ -243,6 +243,98 @@ public class TaskService : ITaskService
         }
     }
 
+    public async Task<bool> AddTagToTaskAsync(int taskId, int tagId)
+    {
+        try
+        {
+            var task = await _db.TaskItems
+                .Include(t => t.Tags)
+                .FirstOrDefaultAsync(t => t.Id == taskId);
+
+            if (task is null)
+                return false;
+
+            if (task.Tags.Any(t => t.Id == tagId))
+                return false;
+
+            var tag = await _db.Tags.FindAsync(tagId);
+            if (tag is null)
+                return false;
+
+            task.Tags.Add(tag);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding tag {TagId} to task {TaskId}", tagId, taskId);
+            throw;
+        }
+    }
+
+    public async Task<bool> RemoveTagFromTaskAsync(int taskId, int tagId)
+    {
+        try
+        {
+            var task = await _db.TaskItems
+                .Include(t => t.Tags)
+                .FirstOrDefaultAsync(t => t.Id == taskId);
+
+            if (task is null)
+                return false;
+
+            var tag = task.Tags.FirstOrDefault(t => t.Id == tagId);
+            if (tag is null)
+                return false;
+
+            task.Tags.Remove(tag);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing tag {TagId} from task {TaskId}", tagId, taskId);
+            throw;
+        }
+    }
+
+    public async Task<List<Tag>> GetAvailableTagsAsync()
+    {
+        try
+        {
+            return await _db.Tags.OrderBy(t => t.Name).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving available tags");
+            throw;
+        }
+    }
+
+    public async Task<Tag> CreateTagAsync(string name, string color)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(color);
+
+        try
+        {
+            var tag = new Tag
+            {
+                Name = name.Trim(),
+                Color = color.Trim()
+            };
+
+            _db.Tags.Add(tag);
+            await _db.SaveChangesAsync();
+            return tag;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating tag '{TagName}'", name);
+            throw;
+        }
+    }
+
     private async Task<bool> CanMoveToColumnAsync(int columnId, int? excludeTaskId)
     {
         try

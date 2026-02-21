@@ -15,4 +15,9 @@ public interface ITaskService
     Task<ChecklistItem> AddChecklistItemAsync(int taskId, string text);
     Task<bool> UpdateChecklistItemAsync(ChecklistItem item);
     Task<bool> DeleteChecklistItemAsync(int id);
+
+    Task<bool> AddTagToTaskAsync(int taskId, int tagId);
+    Task<bool> RemoveTagFromTaskAsync(int taskId, int tagId);
+    Task<List<Tag>> GetAvailableTagsAsync();
+    Task<Tag> CreateTagAsync(string name, string color);
 }

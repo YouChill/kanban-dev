@@ -216,6 +216,12 @@ namespace KanbanApp.Migrations
                             Id = 6,
                             Color = "#d97706",
                             Name = "setup"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Color = "#0891b2",
+                            Name = "testing"
                         });
                 });
 

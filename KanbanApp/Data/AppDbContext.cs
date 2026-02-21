@@ -165,7 +165,8 @@ public class AppDbContext : DbContext
             new Tag { Id = 3, Name = "db",       Color = "#8b5cf6" },
             new Tag { Id = 4, Name = "design",   Color = "#ec4899" },
             new Tag { Id = 5, Name = "devops",   Color = "#16a34a" },
-            new Tag { Id = 6, Name = "setup",    Color = "#d97706" }
+            new Tag { Id = 6, Name = "setup",    Color = "#d97706" },
+            new Tag { Id = 7, Name = "testing",  Color = "#0891b2" }
         );
 
         // Tasks

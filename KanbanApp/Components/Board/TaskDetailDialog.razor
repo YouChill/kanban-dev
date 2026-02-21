@@ -149,9 +149,11 @@
                             <div class="task-detail__tags">
                                 @foreach (var tag in _task.Tags)
                                 {
+                                    var capturedTag = tag;
                                     <MudChip T="string" Size="Size.Small"
-                                             Style="@($"background-color: {(tag.Color ?? "#6366f1")}20; color: {(tag.Color ?? "#6366f1")}; font-weight: 600;")">
-                                        @tag.Name
+                                             OnClose="() => RemoveTag(capturedTag)"
+                                             Style="@($"background-color: {(capturedTag.Color ?? "#6366f1")}20; color: {(capturedTag.Color ?? "#6366f1")}; font-weight: 600;")">
+                                        @capturedTag.Name
                                     </MudChip>
                                 }
                             </div>
@@ -161,6 +163,93 @@
                             <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
                                 Brak tagów
                             </MudText>
+                        }
+
+                        @if (!_showTagMenu)
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Size="Size.Small"
+                                       Class="task-detail__add-tag-btn"
+                                       OnClick="OpenTagMenu">
+                                Dodaj tag
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <div class="task-detail__tag-menu">
+                                @{
+                                    var unassigned = _allTags.Where(t => !_task.Tags.Any(tt => tt.Id == t.Id)).ToList();
+                                }
+                                @if (unassigned.Count > 0)
+                                {
+                                    <div class="task-detail__tag-list">
+                                        @foreach (var tag in unassigned)
+                                        {
+                                            var capturedTag = tag;
+                                            <button class="task-detail__tag-option" @onclick="() => AddTag(capturedTag)">
+                                                <span class="task-detail__tag-option-dot" style="background-color: @(capturedTag.Color ?? "#6366f1")"></span>
+                                                @capturedTag.Name
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Style="color: var(--text-secondary); padding: 4px 0;">
+                                        Wszystkie tagi przypisane
+                                    </MudText>
+                                }
+
+                                <div class="task-detail__tag-divider"></div>
+
+                                @if (!_showCreateTag)
+                                {
+                                    <button class="task-detail__tag-option task-detail__tag-option--create" @onclick="() => _showCreateTag = true">
+                                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                        Utwórz nowy tag
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="task-detail__tag-create">
+                                        <MudTextField @bind-Value="_newTagName"
+                                                      Placeholder="Nazwa tagu..."
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense"
+                                                      Immediate="true"
+                                                      Class="task-detail__tag-name-input" />
+                                        <div class="task-detail__tag-colors">
+                                            @foreach (var color in _tagColorPalette)
+                                            {
+                                                var c = color;
+                                                <button class="task-detail__tag-color-swatch @(_newTagColor == c ? "task-detail__tag-color-swatch--active" : "")"
+                                                        style="background-color: @c"
+                                                        @onclick="() => _newTagColor = c"></button>
+                                            }
+                                        </div>
+                                        <div class="task-detail__tag-create-actions">
+                                            <MudButton Variant="Variant.Filled"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       Disabled="@string.IsNullOrWhiteSpace(_newTagName)"
+                                                       OnClick="CreateAndAddTag">
+                                                Utwórz
+                                            </MudButton>
+                                            <MudButton Variant="Variant.Text"
+                                                       Size="Size.Small"
+                                                       OnClick="CancelCreateTag">
+                                                Anuluj
+                                            </MudButton>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="task-detail__tag-divider"></div>
+                                <button class="task-detail__tag-option task-detail__tag-option--close" @onclick="CloseTagMenu">
+                                    Zamknij
+                                </button>
+                            </div>
                         }
                     </div>
 
@@ -332,6 +421,99 @@
                 _task.ChecklistItems.Add(newItem);
             _newChecklistText = string.Empty;
         }
+    }
+
+    // ── Tags ──
+
+    private List<Tag> _allTags = [];
+    private bool _showTagMenu;
+    private bool _showCreateTag;
+    private string _newTagName = string.Empty;
+    private string _newTagColor = "#6366f1";
+
+    private static readonly string[] _tagColorPalette =
+    [
+        "#3b82f6", "#6366f1", "#8b5cf6", "#ec4899",
+        "#16a34a", "#d97706", "#ef4444", "#0891b2",
+        "#84cc16", "#f97316"
+    ];
+
+    private async Task OpenTagMenu()
+    {
+        _allTags = await TaskService.GetAvailableTagsAsync();
+        _showTagMenu = true;
+        _showCreateTag = false;
+    }
+
+    private void CloseTagMenu()
+    {
+        _showTagMenu = false;
+        _showCreateTag = false;
+        _newTagName = string.Empty;
+        _newTagColor = "#6366f1";
+    }
+
+    private async Task AddTag(Tag tag)
+    {
+        if (_task is null) return;
+
+        var success = await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
+        if (success)
+        {
+            _task.Tags.Add(tag);
+            Snackbar.Add($"Dodano tag \"{tag.Name}\"", Severity.Success, config =>
+            {
+                config.ShowTransitionDuration = 200;
+                config.HideTransitionDuration = 200;
+                config.VisibleStateDuration = 1500;
+            });
+        }
+    }
+
+    private async Task RemoveTag(Tag tag)
+    {
+        if (_task is null) return;
+
+        var success = await TaskService.RemoveTagFromTaskAsync(_task.Id, tag.Id);
+        if (success)
+        {
+            _task.Tags.RemoveAll(t => t.Id == tag.Id);
+            Snackbar.Add($"Usunięto tag \"{tag.Name}\"", Severity.Info, config =>
+            {
+                config.ShowTransitionDuration = 200;
+                config.HideTransitionDuration = 200;
+                config.VisibleStateDuration = 1500;
+            });
+        }
+    }
+
+    private async Task CreateAndAddTag()
+    {
+        if (_task is null || string.IsNullOrWhiteSpace(_newTagName)) return;
+
+        var tag = await TaskService.CreateTagAsync(_newTagName, _newTagColor);
+        _allTags.Add(tag);
+        await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
+        _task.Tags.Add(tag);
+
+        // Reset create form
+        _newTagName = string.Empty;
+        _newTagColor = "#6366f1";
+        _showCreateTag = false;
+
+        Snackbar.Add($"Utworzono i dodano tag \"{tag.Name}\"", Severity.Success, config =>
+        {
+            config.ShowTransitionDuration = 200;
+            config.HideTransitionDuration = 200;
+            config.VisibleStateDuration = 1500;
+        });
+    }
+
+    private void CancelCreateTag()
+    {
+        _showCreateTag = false;
+        _newTagName = string.Empty;
+        _newTagColor = "#6366f1";
     }
 
     // ── Persist & notify ──

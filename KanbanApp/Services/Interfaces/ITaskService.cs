@@ -11,4 +11,8 @@ public interface ITaskService
     Task<bool> DeleteTaskAsync(int id);
     Task<bool> MoveTaskAsync(int taskId, int targetColumnId, int? newOrder);
     Task<bool> CanMoveToColumnAsync(int columnId);
+
+    Task<ChecklistItem> AddChecklistItemAsync(int taskId, string text);
+    Task<bool> UpdateChecklistItemAsync(ChecklistItem item);
+    Task<bool> DeleteChecklistItemAsync(int id);
 }

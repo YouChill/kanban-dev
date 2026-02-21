@@ -179,6 +179,70 @@ public class TaskService : ITaskService
         return await CanMoveToColumnAsync(columnId, excludeTaskId: null);
     }
 
+    public async Task<ChecklistItem> AddChecklistItemAsync(int taskId, string text)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+
+        try
+        {
+            var item = new ChecklistItem
+            {
+                TaskItemId = taskId,
+                Text = text.Trim()
+            };
+
+            _db.ChecklistItems.Add(item);
+            await _db.SaveChangesAsync();
+
+            return item;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding checklist item to task {TaskId}", taskId);
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdateChecklistItemAsync(ChecklistItem item)
+    {
+        try
+        {
+            var existing = await _db.ChecklistItems.FindAsync(item.Id);
+            if (existing is null)
+                return false;
+
+            existing.Text = item.Text;
+            existing.IsDone = item.IsDone;
+
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating checklist item {ItemId}", item.Id);
+            throw;
+        }
+    }
+
+    public async Task<bool> DeleteChecklistItemAsync(int id)
+    {
+        try
+        {
+            var item = await _db.ChecklistItems.FindAsync(id);
+            if (item is null)
+                return false;
+
+            _db.ChecklistItems.Remove(item);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting checklist item {ItemId}", id);
+            throw;
+        }
+    }
+
     private async Task<bool> CanMoveToColumnAsync(int columnId, int? excludeTaskId)
     {
         try

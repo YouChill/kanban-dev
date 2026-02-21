@@ -3,6 +3,7 @@
 @using KanbanApp.Services.Interfaces
 @inject ITaskService TaskService
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <MudDialog Class="task-detail-dialog">
     <DialogContent>
@@ -20,20 +21,35 @@
         {
             <div class="task-detail__layout">
                 <div class="task-detail__left">
-                    <MudText Typo="Typo.h5" Class="task-detail__title">@_task.Title</MudText>
+                    @if (_editingTitle)
+                    {
+                        <MudTextField @bind-Value="_titleValue"
+                                      Variant="Variant.Outlined"
+                                      Immediate="true"
+                                      AutoFocus="true"
+                                      Class="task-detail__title-input"
+                                      OnBlur="SaveTitle"
+                                      OnKeyDown="HandleTitleKeyDown" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h5"
+                                 Class="task-detail__title task-detail__title--editable"
+                                 @onclick="StartEditingTitle">
+                            @_task.Title
+                        </MudText>
+                    }
 
                     <div class="task-detail__section">
                         <MudText Typo="Typo.caption" Class="task-detail__label">Opis</MudText>
-                        @if (!string.IsNullOrWhiteSpace(_task.Description))
-                        {
-                            <MudText Typo="Typo.body2" Class="task-detail__description">@_task.Description</MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
-                                Brak opisu
-                            </MudText>
-                        }
+                        <MudTextField @bind-Value="_descriptionValue"
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      Placeholder="Dodaj opis..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="SaveDescription"
+                                      Class="task-detail__description-input" />
                     </div>
 
                     <div class="task-detail__section">
@@ -69,25 +85,29 @@
                 <div class="task-detail__right">
                     <div class="task-detail__section">
                         <MudText Typo="Typo.caption" Class="task-detail__label">Priorytet</MudText>
-                        <PriorityBadge Priority="_task.Priority" />
+                        <MudSelect T="Priority"
+                                   Value="_task.Priority"
+                                   ValueChanged="SavePriority"
+                                   Variant="Variant.Outlined"
+                                   Dense="true"
+                                   Class="task-detail__priority-select">
+                            @foreach (Priority p in Enum.GetValues<Priority>())
+                            {
+                                <MudSelectItem Value="@p">@GetPriorityLabel(p)</MudSelectItem>
+                            }
+                        </MudSelect>
                     </div>
 
                     <div class="task-detail__section">
                         <MudText Typo="Typo.caption" Class="task-detail__label">Termin</MudText>
-                        @if (_task.DueDate.HasValue)
-                        {
-                            var isOverdue = _task.DueDate.Value < DateTime.UtcNow && _task.CompletedAt is null;
-                            <MudText Typo="Typo.body2"
-                                     Style="@(isOverdue ? "color: #dc2626; font-weight: 600;" : "")">
-                                @_task.DueDate.Value.ToString("dd MMMM yyyy")
-                            </MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
-                                Nie ustawiono
-                            </MudText>
-                        }
+                        <MudDatePicker Date="_dueDateValue"
+                                       DateChanged="SaveDueDate"
+                                       Variant="Variant.Outlined"
+                                       Dense="true"
+                                       Placeholder="Wybierz datę..."
+                                       Clearable="true"
+                                       DateFormat="dd MMMM yyyy"
+                                       Class="task-detail__date-picker" />
                     </div>
 
                     <div class="task-detail__section">
@@ -137,11 +157,102 @@
     private TaskItem? _task;
     private bool _loading = true;
 
+    // Editable field state
+    private bool _editingTitle;
+    private string _titleValue = string.Empty;
+    private string? _descriptionValue;
+    private DateTime? _dueDateValue;
+
     protected override async Task OnInitializedAsync()
     {
         _task = await TaskService.GetTaskByIdAsync(TaskId);
+        if (_task is not null)
+        {
+            _titleValue = _task.Title;
+            _descriptionValue = _task.Description;
+            _dueDateValue = _task.DueDate;
+        }
         _loading = false;
     }
+
+    // ── Title editing ──
+
+    private void StartEditingTitle()
+    {
+        _titleValue = _task!.Title;
+        _editingTitle = true;
+    }
+
+    private async Task SaveTitle()
+    {
+        _editingTitle = false;
+        var trimmed = _titleValue?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed) || trimmed == _task!.Title)
+        {
+            _titleValue = _task.Title;
+            return;
+        }
+
+        _task.Title = trimmed;
+        _titleValue = trimmed;
+        await PersistTask();
+    }
+
+    private async Task HandleTitleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveTitle();
+        }
+        else if (e.Key == "Escape")
+        {
+            _titleValue = _task!.Title;
+            _editingTitle = false;
+        }
+    }
+
+    // ── Description editing (debounced) ──
+
+    private async Task SaveDescription(string value)
+    {
+        if (_task is null) return;
+        _task.Description = value;
+        await PersistTask();
+    }
+
+    // ── Priority editing ──
+
+    private async Task SavePriority(Priority newPriority)
+    {
+        if (_task is null || _task.Priority == newPriority) return;
+        _task.Priority = newPriority;
+        await PersistTask();
+    }
+
+    // ── Due date editing ──
+
+    private async Task SaveDueDate(DateTime? newDate)
+    {
+        if (_task is null) return;
+        _dueDateValue = newDate;
+        _task.DueDate = newDate;
+        await PersistTask();
+    }
+
+    // ── Persist & notify ──
+
+    private async Task PersistTask()
+    {
+        await TaskService.UpdateTaskAsync(_task!);
+        Snackbar.Add("Zapisano", Severity.Success, config =>
+        {
+            config.ShowTransitionDuration = 200;
+            config.HideTransitionDuration = 200;
+            config.VisibleStateDuration = 1500;
+        });
+    }
+
+    // ── Delete ──
 
     private async Task HandleDelete()
     {
@@ -158,5 +269,17 @@
         }
     }
 
-    private void Close() => MudDialog.Cancel();
+    private void Close() => MudDialog.Close(DialogResult.Ok(false));
+
+    // ── Helpers ──
+
+    private static string GetPriorityLabel(Priority priority) => priority switch
+    {
+        Priority.Low => "Niski",
+        Priority.Medium => "Średni",
+        Priority.High => "Wysoki",
+        Priority.Critical => "Krytyczny",
+        _ => priority.ToString()
+    };
+
 }

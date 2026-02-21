@@ -1,0 +1,162 @@
+@using KanbanApp.Models
+@using KanbanApp.Models.Enums
+@using KanbanApp.Services.Interfaces
+@inject ITaskService TaskService
+@inject IDialogService DialogService
+
+<MudDialog Class="task-detail-dialog">
+    <DialogContent>
+        @if (_loading)
+        {
+            <div class="task-detail__loading">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+        else if (_task is null)
+        {
+            <MudText Typo="Typo.body1" Color="Color.Error">Nie znaleziono zadania.</MudText>
+        }
+        else
+        {
+            <div class="task-detail__layout">
+                <div class="task-detail__left">
+                    <MudText Typo="Typo.h5" Class="task-detail__title">@_task.Title</MudText>
+
+                    <div class="task-detail__section">
+                        <MudText Typo="Typo.caption" Class="task-detail__label">Opis</MudText>
+                        @if (!string.IsNullOrWhiteSpace(_task.Description))
+                        {
+                            <MudText Typo="Typo.body2" Class="task-detail__description">@_task.Description</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
+                                Brak opisu
+                            </MudText>
+                        }
+                    </div>
+
+                    <div class="task-detail__section">
+                        <MudText Typo="Typo.caption" Class="task-detail__label">Checklista</MudText>
+                        @if (_task.ChecklistItems.Count > 0)
+                        {
+                            var done = _task.ChecklistItems.Count(c => c.IsDone);
+                            var total = _task.ChecklistItems.Count;
+                            <MudProgressLinear Value="@((double)done / total * 100)" Color="Color.Primary"
+                                              Rounded="true" Size="Size.Small" Class="mb-2" />
+                            @foreach (var item in _task.ChecklistItems)
+                            {
+                                <div class="task-detail__checklist-item">
+                                    <MudIcon Icon="@(item.IsDone ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)"
+                                             Size="Size.Small"
+                                             Color="@(item.IsDone ? Color.Success : Color.Default)" />
+                                    <MudText Typo="Typo.body2"
+                                             Class="@(item.IsDone ? "task-detail__checklist-done" : "")">
+                                        @item.Text
+                                    </MudText>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
+                                Brak elementów checklisty
+                            </MudText>
+                        }
+                    </div>
+                </div>
+
+                <div class="task-detail__right">
+                    <div class="task-detail__section">
+                        <MudText Typo="Typo.caption" Class="task-detail__label">Priorytet</MudText>
+                        <PriorityBadge Priority="_task.Priority" />
+                    </div>
+
+                    <div class="task-detail__section">
+                        <MudText Typo="Typo.caption" Class="task-detail__label">Termin</MudText>
+                        @if (_task.DueDate.HasValue)
+                        {
+                            var isOverdue = _task.DueDate.Value < DateTime.UtcNow && _task.CompletedAt is null;
+                            <MudText Typo="Typo.body2"
+                                     Style="@(isOverdue ? "color: #dc2626; font-weight: 600;" : "")">
+                                @_task.DueDate.Value.ToString("dd MMMM yyyy")
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
+                                Nie ustawiono
+                            </MudText>
+                        }
+                    </div>
+
+                    <div class="task-detail__section">
+                        <MudText Typo="Typo.caption" Class="task-detail__label">Tagi</MudText>
+                        @if (_task.Tags.Count > 0)
+                        {
+                            <div class="task-detail__tags">
+                                @foreach (var tag in _task.Tags)
+                                {
+                                    <MudChip T="string" Size="Size.Small"
+                                             Style="@($"background-color: {(tag.Color ?? "#6366f1")}20; color: {(tag.Color ?? "#6366f1")}; font-weight: 600;")">
+                                        @tag.Name
+                                    </MudChip>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Style="color: var(--text-secondary); font-style: italic;">
+                                Brak tagów
+                            </MudText>
+                        }
+                    </div>
+
+                    <div class="task-detail__divider"></div>
+
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true"
+                               StartIcon="@Icons.Material.Outlined.Delete" OnClick="HandleDelete">
+                        Usuń zadanie
+                    </MudButton>
+                </div>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Zamknij</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int TaskId { get; set; }
+
+    private TaskItem? _task;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _task = await TaskService.GetTaskByIdAsync(TaskId);
+        _loading = false;
+    }
+
+    private async Task HandleDelete()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Usuń zadanie",
+            $"Czy na pewno chcesz usunąć zadanie \"{_task?.Title}\"?",
+            yesText: "Usuń",
+            cancelText: "Anuluj");
+
+        if (confirmed == true)
+        {
+            await TaskService.DeleteTaskAsync(TaskId);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private void Close() => MudDialog.Cancel();
+}

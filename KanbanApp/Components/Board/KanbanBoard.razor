@@ -77,8 +77,19 @@
 
     private async Task HandleTaskClick(TaskItem task)
     {
-        // TaskDetailDialog will be implemented in a future issue
-        await Task.CompletedTask;
+        var parameters = new DialogParameters { ["TaskId"] = task.Id };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            BackdropClick = true
+        };
+        var dialog = await DialogService.ShowAsync<TaskDetailDialog>(task.Title, parameters, options);
+        var result = await dialog.Result;
+
+        // Refresh board after dialog closes (handles deletion or future edits)
+        await HandleColumnChanged();
     }
 
     private async Task HandleTaskDelete(TaskItem task)

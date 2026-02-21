@@ -2,6 +2,7 @@
 @using KanbanApp.Models.Enums
 @using KanbanApp.Services.Interfaces
 @inject IColumnService ColumnService
+@inject ITaskService TaskService
 @inject IDialogService DialogService
 
 <div class="kanban-column @WipCssClass" style="border-top: 3px solid @(Column.Color ?? "var(--accent)")">
@@ -34,7 +35,25 @@
                  CanDropClass="kanban-column__cards--drop-ready"
                  Class="kanban-column__cards" />
 
-    <button class="kanban-column__add-task" @onclick="HandleAddTask">+ Dodaj zadanie</button>
+    <div class="kanban-column__footer">
+        @if (_isAddingTask)
+        {
+            <div class="kanban-column__inline-input kanban-column__inline-input--active">
+                <MudTextField @bind-Value="_newTaskTitle"
+                              Placeholder="Tytuł zadania..."
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              AutoFocus="true"
+                              OnKeyDown="HandleTaskInputKeyDown"
+                              Immediate="true"
+                              Class="kanban-column__task-field" />
+            </div>
+        }
+        else
+        {
+            <button class="kanban-column__add-task" @onclick="ShowTaskInput">+ Dodaj zadanie</button>
+        }
+    </div>
 </div>
 
 @code {
@@ -43,6 +62,9 @@
 
     [Parameter]
     public EventCallback OnColumnChanged { get; set; }
+
+    private bool _isAddingTask;
+    private string _newTaskTitle = string.Empty;
 
     private string WipBadgeCssClass => Column.WipLimit switch
     {
@@ -61,12 +83,9 @@
     {
         var parameters = new DialogParameters
         {
-            ["ColumnId"] = Column.Id,
-            ["Name"] = Column.Name,
-            ["ColumnColor"] = Column.Color,
-            ["WipLimit"] = Column.WipLimit
+            ["ExistingColumn"] = Column
         };
-        var dialog = await DialogService.ShowAsync<EditColumnDialog>("Edytuj kolumnę", parameters);
+        var dialog = await DialogService.ShowAsync<AddColumnDialog>("Edytuj kolumnę", parameters);
         var result = await dialog.Result;
 
         if (result is { Canceled: false })
@@ -77,16 +96,38 @@
 
     private async Task HandleDelete()
     {
-        var deleted = await ColumnService.DeleteColumnAsync(Column.Id);
-        if (deleted)
+        var parameters = new DialogParameters
+        {
+            ["ColumnId"] = Column.Id
+        };
+        var dialog = await DialogService.ShowAsync<DeleteColumnDialog>("Usuń kolumnę", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
         {
             await OnColumnChanged.InvokeAsync();
         }
     }
 
-    private async Task HandleAddTask()
+    private void ShowTaskInput()
     {
-        // Add task functionality will be implemented in a future issue
-        await Task.CompletedTask;
+        _isAddingTask = true;
+        _newTaskTitle = string.Empty;
+    }
+
+    private async Task HandleTaskInputKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTaskTitle))
+        {
+            await TaskService.CreateTaskAsync(Column.Id, _newTaskTitle.Trim(), Priority.Medium);
+            _newTaskTitle = string.Empty;
+            _isAddingTask = false;
+            await OnColumnChanged.InvokeAsync();
+        }
+        else if (e.Key == "Escape")
+        {
+            _isAddingTask = false;
+            _newTaskTitle = string.Empty;
+        }
     }
 }

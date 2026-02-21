@@ -1,0 +1,61 @@
+@using KanbanApp.Services.Interfaces
+@inject IColumnService ColumnService
+
+<MudDialog>
+    <DialogContent>
+        <div class="delete-column-dialog">
+            <MudIcon Icon="@Icons.Material.Outlined.Warning" Color="Color.Error" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.body1" Class="mb-2">
+                Czy na pewno chcesz usunąć tę kolumnę?
+            </MudText>
+            @if (_taskCount > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+                    Kolumna zawiera <strong>@_taskCount @GetTaskWord(_taskCount)</strong>.
+                </MudAlert>
+            }
+            <MudText Typo="Typo.body2" Style="color: var(--text-secondary);">
+                Usunięcie kolumny spowoduje trwałe usunięcie wszystkich zawartych w niej zadań.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Confirm">
+            Usuń kolumnę
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int ColumnId { get; set; }
+
+    private int _taskCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _taskCount = await ColumnService.GetTaskCountAsync(ColumnId);
+    }
+
+    private async Task Confirm()
+    {
+        var deleted = await ColumnService.DeleteColumnAsync(ColumnId);
+        if (deleted)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private static string GetTaskWord(int count) => count switch
+    {
+        1 => "zadanie",
+        >= 2 and <= 4 => "zadania",
+        _ => "zadań"
+    };
+}

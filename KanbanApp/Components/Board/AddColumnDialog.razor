@@ -1,0 +1,107 @@
+@using KanbanApp.Models
+@using KanbanApp.Services.Interfaces
+@inject IColumnService ColumnService
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Nazwa" Required="true" RequiredError="Nazwa jest wymagana"
+                      Variant="Variant.Outlined" Class="mb-3" />
+
+        <MudText Typo="Typo.body2" Class="mb-2" Style="color: var(--text-secondary);">Kolor</MudText>
+        <div class="color-picker">
+            <div class="color-picker__presets">
+                @foreach (var preset in _colorPresets)
+                {
+                    <button type="button"
+                            class="color-picker__swatch @(preset == _color ? "color-picker__swatch--active" : "")"
+                            style="background-color: @preset;"
+                            @onclick="() => SelectColor(preset)"
+                            title="@preset">
+                    </button>
+                }
+            </div>
+            <MudTextField @bind-Value="_color" Label="Własny kolor (hex)" Placeholder="#6366f1"
+                          Variant="Variant.Outlined" Class="mt-2"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.ColorLens"
+                          Style="@($"--mud-palette-primary: {(_color ?? "#6366f1")}")" />
+            @if (!string.IsNullOrWhiteSpace(_color))
+            {
+                <div class="color-picker__preview" style="background-color: @_color;"></div>
+            }
+        </div>
+
+        <MudNumericField @bind-Value="_wipLimit" Label="Limit WIP (opcjonalny)" Min="1"
+                         Variant="Variant.Outlined" Class="mt-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_name))">
+            @(_isEditMode ? "Zapisz" : "Dodaj")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int BoardId { get; set; }
+
+    [Parameter]
+    public Column? ExistingColumn { get; set; }
+
+    private bool _isEditMode => ExistingColumn is not null;
+
+    private string _name = string.Empty;
+    private string? _color;
+    private int? _wipLimit;
+
+    private readonly string[] _colorPresets =
+    [
+        "#6366f1", // indigo
+        "#22c55e", // green
+        "#f97316", // orange
+        "#ef4444", // red
+        "#06b6d4", // cyan
+        "#8b5cf6"  // violet
+    ];
+
+    protected override void OnInitialized()
+    {
+        if (ExistingColumn is not null)
+        {
+            _name = ExistingColumn.Name;
+            _color = ExistingColumn.Color;
+            _wipLimit = ExistingColumn.WipLimit;
+        }
+    }
+
+    private void SelectColor(string color)
+    {
+        _color = color;
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+            return;
+
+        var color = string.IsNullOrWhiteSpace(_color) ? null : _color.Trim();
+
+        if (_isEditMode)
+        {
+            await ColumnService.UpdateColumnAsync(ExistingColumn!.Id, _name.Trim(), color, _wipLimit);
+        }
+        else
+        {
+            await ColumnService.CreateColumnAsync(BoardId, _name.Trim(), color, _wipLimit);
+        }
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

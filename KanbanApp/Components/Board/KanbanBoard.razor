@@ -71,7 +71,7 @@
     private async Task OpenNewColumnDialog()
     {
         var parameters = new DialogParameters { ["BoardId"] = BoardId };
-        var dialog = await DialogService.ShowAsync<NewColumnDialog>("Nowa kolumna", parameters);
+        var dialog = await DialogService.ShowAsync<AddColumnDialog>("Nowa kolumna", parameters);
         var result = await dialog.Result;
 
         if (result is { Canceled: false })

@@ -1,0 +1,223 @@
+@using KanbanApp.Models
+@using KanbanApp.Models.Enums
+@using KanbanApp.Services
+@inject BoardFilterState FilterState
+@implements IDisposable
+
+<!-- Desktop inline filters (>= 1280px) -->
+<div class="filter-bar">
+    <MudTextField T="string"
+                  Value="_searchText"
+                  ValueChanged="OnSearchChanged"
+                  Placeholder="Szukaj zadań..."
+                  Variant="Variant.Outlined"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true"
+                  DebounceInterval="300"
+                  Margin="Margin.Dense"
+                  Class="filter-bar__search" />
+
+    <MudSelect T="Priority"
+               MultiSelection="true"
+               SelectedValues="_selectedPriorities"
+               SelectedValuesChanged="OnPrioritiesChanged"
+               Label="Priorytet"
+               Variant="Variant.Outlined"
+               Dense="true"
+               Margin="Margin.Dense"
+               AnchorOrigin="Origin.BottomCenter"
+               Class="filter-bar__priority">
+        @foreach (var p in Enum.GetValues<Priority>())
+        {
+            <MudSelectItem Value="p">@GetPriorityLabel(p)</MudSelectItem>
+        }
+    </MudSelect>
+
+    @if (AvailableTags.Count > 0)
+    {
+        <div class="filter-bar__tags">
+            @foreach (var tag in AvailableTags)
+            {
+                var capturedTag = tag;
+                var isSelected = FilterState.SelectedTagIds.Contains(capturedTag.Id);
+                <button class="filter-bar__chip @(isSelected ? "filter-bar__chip--active" : "")"
+                        style="@GetChipStyle(capturedTag, isSelected)"
+                        @onclick="() => ToggleTag(capturedTag.Id)">
+                    @capturedTag.Name
+                </button>
+            }
+        </div>
+    }
+
+    @if (FilterState.ActiveFilterCount > 0)
+    {
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Error"
+                   Size="Size.Small"
+                   OnClick="ClearFilters"
+                   StartIcon="@Icons.Material.Filled.Clear"
+                   Class="filter-bar__clear">
+            Wyczyść
+        </MudButton>
+
+        <span class="filter-bar__badge">@FilterState.ActiveFilterCount</span>
+    }
+</div>
+
+<!-- Mobile filter button (< 1280px) -->
+<div class="filter-bar-mobile">
+    <MudBadge Content="@FilterState.ActiveFilterCount"
+              Color="Color.Primary"
+              Visible="FilterState.ActiveFilterCount > 0"
+              Overlap="true">
+        <MudIconButton Icon="@Icons.Material.Filled.FilterList"
+                       OnClick="ToggleMobileFilters"
+                       Size="Size.Small" />
+    </MudBadge>
+
+    <MudPopover Open="_mobileOpen"
+                AnchorOrigin="Origin.BottomRight"
+                TransformOrigin="Origin.TopRight"
+                Class="filter-bar-mobile__popover">
+        <div class="filter-bar-mobile__content">
+            <div class="filter-bar-mobile__header">
+                <MudText Typo="Typo.subtitle2">Filtry</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Size="Size.Small"
+                               OnClick="ToggleMobileFilters" />
+            </div>
+
+            <MudTextField T="string"
+                          Value="_searchText"
+                          ValueChanged="OnSearchChanged"
+                          Placeholder="Szukaj zadań..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Margin="Margin.Dense"
+                          FullWidth="true" />
+
+            <MudSelect T="Priority"
+                       MultiSelection="true"
+                       SelectedValues="_selectedPriorities"
+                       SelectedValuesChanged="OnPrioritiesChanged"
+                       Label="Priorytet"
+                       Variant="Variant.Outlined"
+                       Dense="true"
+                       Margin="Margin.Dense">
+                @foreach (var p in Enum.GetValues<Priority>())
+                {
+                    <MudSelectItem Value="p">@GetPriorityLabel(p)</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (AvailableTags.Count > 0)
+            {
+                <div class="filter-bar-mobile__tags">
+                    @foreach (var tag in AvailableTags)
+                    {
+                        var capturedTag = tag;
+                        var isSelected = FilterState.SelectedTagIds.Contains(capturedTag.Id);
+                        <button class="filter-bar__chip @(isSelected ? "filter-bar__chip--active" : "")"
+                                style="@GetChipStyle(capturedTag, isSelected)"
+                                @onclick="() => ToggleTag(capturedTag.Id)">
+                            @capturedTag.Name
+                        </button>
+                    }
+                </div>
+            }
+
+            @if (FilterState.ActiveFilterCount > 0)
+            {
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Error"
+                           Size="Size.Small"
+                           OnClick="ClearFilters"
+                           StartIcon="@Icons.Material.Filled.Clear"
+                           FullWidth="true">
+                    Wyczyść filtry (@FilterState.ActiveFilterCount)
+                </MudButton>
+            }
+        </div>
+    </MudPopover>
+</div>
+
+@code {
+    [Parameter]
+    public List<Tag> AvailableTags { get; set; } = [];
+
+    private string _searchText = string.Empty;
+    private IEnumerable<Priority> _selectedPriorities = [];
+    private bool _mobileOpen;
+
+    protected override void OnInitialized()
+    {
+        FilterState.OnFilterChanged += HandleFilterChanged;
+        _searchText = FilterState.SearchText;
+        _selectedPriorities = FilterState.SelectedPriorities;
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchText = value;
+        FilterState.SetSearch(value);
+    }
+
+    private void OnPrioritiesChanged(IEnumerable<Priority> values)
+    {
+        _selectedPriorities = values;
+        FilterState.SetPriorities(values);
+    }
+
+    private void ToggleTag(int tagId)
+    {
+        var current = new HashSet<int>(FilterState.SelectedTagIds);
+        if (!current.Remove(tagId))
+        {
+            current.Add(tagId);
+        }
+        FilterState.SetTags(current);
+    }
+
+    private void ClearFilters()
+    {
+        _searchText = string.Empty;
+        _selectedPriorities = [];
+        FilterState.ClearAll();
+    }
+
+    private void ToggleMobileFilters()
+    {
+        _mobileOpen = !_mobileOpen;
+    }
+
+    private void HandleFilterChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetPriorityLabel(Priority p) => p switch
+    {
+        Priority.Low => "Niski",
+        Priority.Medium => "Średni",
+        Priority.High => "Wysoki",
+        Priority.Critical => "Krytyczny",
+        _ => p.ToString()
+    };
+
+    private static string GetChipStyle(Tag tag, bool isSelected)
+    {
+        var color = tag.Color ?? "#6366f1";
+        if (isSelected)
+            return $"background-color: {color}; color: #ffffff; border-color: {color};";
+        return $"border-color: {color}40; color: {color};";
+    }
+
+    public void Dispose()
+    {
+        FilterState.OnFilterChanged -= HandleFilterChanged;
+    }
+}

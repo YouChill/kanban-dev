@@ -41,10 +41,14 @@
     private List<TaskItem> AllTasks =>
         Columns.SelectMany(c => c.Tasks).OrderBy(t => t.Order).ToList();
 
+    protected override void OnParametersSet()
+    {
+        _dropContainer?.Refresh();
+    }
+
     private async Task HandleColumnChanged()
     {
         await OnColumnChanged.InvokeAsync();
-        _dropContainer?.Refresh();
     }
 
     private async Task OnTaskDropped(MudItemDropInfo<TaskItem> dropItem)

@@ -1,9 +1,11 @@
 @page "/board/{Id:int}"
 @using KanbanApp.Models
+@using KanbanApp.Services
 @using KanbanApp.Services.Interfaces
 @using KanbanApp.Components.Layout
 @using KanbanApp.Components.Board
 @inject IBoardService BoardService
+@inject BoardFilterState FilterState
 @inject NavigationManager Navigation
 @implements IDisposable
 
@@ -63,7 +65,14 @@ else
 
         if (_board is not null)
         {
-            Layout?.SetPageInfo(_board.Name, "Tablice", "/boards");
+            var availableTags = _board.Columns
+                .SelectMany(c => c.Tasks)
+                .SelectMany(t => t.Tags)
+                .GroupBy(t => t.Id)
+                .Select(g => g.First())
+                .OrderBy(t => t.Name)
+                .ToList();
+            Layout?.SetPageInfo(_board.Name, "Tablice", "/boards", availableTags);
         }
         else
         {
@@ -78,6 +87,7 @@ else
 
     public void Dispose()
     {
+        FilterState.ClearAll();
         Layout?.SetPageInfo("Tablice");
     }
 }

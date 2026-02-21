@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@using KanbanApp.Models
+@using KanbanApp.Components.Board
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -13,7 +15,8 @@
             <div class="app-layout__main">
                 <TopBar Title="@_pageTitle"
                         BreadcrumbText="@_breadcrumbText"
-                        BreadcrumbHref="@_breadcrumbHref" />
+                        BreadcrumbHref="@_breadcrumbHref"
+                        Actions="@_topBarActions" />
 
                 <main class="app-layout__content">
                     @Body
@@ -39,6 +42,8 @@
     private string _pageTitle = "Tablice";
     private string? _breadcrumbText;
     private string? _breadcrumbHref;
+    private RenderFragment? _topBarActions;
+    private List<Tag> _filterTags = [];
 
     private readonly MudTheme _theme = new()
     {
@@ -56,6 +61,23 @@
         _pageTitle = title;
         _breadcrumbText = breadcrumbText;
         _breadcrumbHref = breadcrumbHref;
+        _topBarActions = null;
+        _filterTags = [];
+        StateHasChanged();
+    }
+
+    public void SetPageInfo(string title, string? breadcrumbText, string? breadcrumbHref, List<Tag> availableTags)
+    {
+        _pageTitle = title;
+        _breadcrumbText = breadcrumbText;
+        _breadcrumbHref = breadcrumbHref;
+        _filterTags = availableTags;
+        _topBarActions = builder =>
+        {
+            builder.OpenComponent<FilterBar>(0);
+            builder.AddAttribute(1, nameof(FilterBar.AvailableTags), _filterTags);
+            builder.CloseComponent();
+        };
         StateHasChanged();
     }
 

@@ -27,11 +27,11 @@
                         }
                         @if (_currentBoardId.HasValue)
                         {
+                            <MudTooltip Text="Eksportuj">
                             <MudMenu Icon="@Icons.Material.Outlined.FileDownload"
                                      Size="Size.Small"
                                      AnchorOrigin="Origin.BottomRight"
-                                     TransformOrigin="Origin.TopRight"
-                                     Title="Eksportuj">
+                                     TransformOrigin="Origin.TopRight">
                                 <MudMenuItem OnClick="ExportJson"
                                              Icon="@Icons.Material.Outlined.DataObject">
                                     Eksport JSON
@@ -41,6 +41,7 @@
                                     Eksport CSV
                                 </MudMenuItem>
                             </MudMenu>
+                            </MudTooltip>
                         }
                         @if (_onStatsToggle is not null)
                         {

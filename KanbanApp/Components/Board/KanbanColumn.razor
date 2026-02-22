@@ -1,10 +1,13 @@
 @using KanbanApp.Models
 @using KanbanApp.Models.Enums
+@using KanbanApp.Services
 @using KanbanApp.Services.Interfaces
 @inject IColumnService ColumnService
 @inject ITaskService TaskService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject BoardFilterState FilterState
 
 <div class="kanban-column @WipCssClass" style="border-top: 3px solid @(Column.Color ?? "var(--accent)")">
     <div class="kanban-column__header">
@@ -34,7 +37,22 @@
     <MudDropZone T="TaskItem"
                  Identifier="@Column.Id.ToString()"
                  CanDropClass="kanban-column__cards--drop-ready"
-                 Class="kanban-column__cards" />
+                 Class="kanban-column__cards">
+        @if (Column.Tasks.Count == 0)
+        {
+            <div class="kanban-empty-state">
+                <MudIcon Icon="@Icons.Material.Outlined.Add" Class="kanban-empty-state__icon" />
+                <span class="kanban-empty-state__text">Przeciągnij tutaj zadanie lub dodaj nowe</span>
+            </div>
+        }
+        else if (FilteredTaskCount == 0)
+        {
+            <div class="kanban-empty-state">
+                <MudIcon Icon="@Icons.Material.Outlined.FilterList" Class="kanban-empty-state__icon" />
+                <span class="kanban-empty-state__text">Żadne zadanie nie pasuje do filtrów</span>
+            </div>
+        }
+    </MudDropZone>
 
     <div class="kanban-column__footer">
         @if (_isAddingTask)
@@ -66,6 +84,9 @@
 
     private bool _isAddingTask;
     private string _newTaskTitle = string.Empty;
+    private bool _scrollToNewTask;
+
+    private int FilteredTaskCount => Column.Tasks.Count(t => FilterState.Matches(t));
 
     private string WipBadgeCssClass => Column.WipLimit switch
     {
@@ -80,13 +101,19 @@
             ? "kanban-column--wip-exceeded"
             : "";
 
+    private static readonly DialogOptions _dialogOptions = new()
+    {
+        CloseOnEscapeKey = true,
+        BackdropClick = true
+    };
+
     private async Task HandleEdit()
     {
         var parameters = new DialogParameters
         {
             ["ExistingColumn"] = Column
         };
-        var dialog = await DialogService.ShowAsync<AddColumnDialog>("Edytuj kolumnę", parameters);
+        var dialog = await DialogService.ShowAsync<AddColumnDialog>("Edytuj kolumnę", parameters, _dialogOptions);
         var result = await dialog.Result;
 
         if (result is { Canceled: false })
@@ -101,7 +128,7 @@
         {
             ["ColumnId"] = Column.Id
         };
-        var dialog = await DialogService.ShowAsync<DeleteColumnDialog>("Usuń kolumnę", parameters);
+        var dialog = await DialogService.ShowAsync<DeleteColumnDialog>("Usuń kolumnę", parameters, _dialogOptions);
         var result = await dialog.Result;
 
         if (result is { Canceled: false })
@@ -122,6 +149,15 @@
         _newTaskTitle = string.Empty;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_scrollToNewTask)
+        {
+            _scrollToNewTask = false;
+            await JS.InvokeVoidAsync("kanbanInterop.scrollToLastCard", Column.Id.ToString());
+        }
+    }
+
     private async Task HandleTaskInputKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTaskTitle))
@@ -129,6 +165,7 @@
             await TaskService.CreateTaskAsync(Column.Id, _newTaskTitle.Trim(), Priority.Medium);
             _newTaskTitle = string.Empty;
             _isAddingTask = false;
+            _scrollToNewTask = true;
             await OnColumnChanged.InvokeAsync();
         }
         else if (e.Key == "Escape")

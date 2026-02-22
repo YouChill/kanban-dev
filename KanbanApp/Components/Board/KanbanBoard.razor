@@ -1,33 +1,51 @@
 @using KanbanApp.Models
 @using KanbanApp.Services
 @using KanbanApp.Services.Interfaces
-@implements IDisposable
+@implements IAsyncDisposable
 @inject IDialogService DialogService
 @inject ITaskService TaskService
 @inject ISnackbar Snackbar
 @inject BoardFilterState FilterState
+@inject IJSRuntime JS
 
-<MudDropContainer @ref="_dropContainer"
-                  T="TaskItem"
-                  Items="AllTasks"
-                  ItemsSelector="@((item, zone) => item.ColumnId.ToString() == zone)"
-                  ItemDropped="OnTaskDropped"
-                  DraggingClass="task-card--dragging"
-                  Class="kanban-board">
-    <ChildContent>
-        @foreach (var column in Columns.OrderBy(c => c.Order))
-        {
-            <KanbanColumn Column="column" OnColumnChanged="HandleColumnChanged" />
-        }
+@if (Columns.Count == 0)
+{
+    <div class="kanban-board-empty">
+        <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Class="kanban-board-empty__icon" />
+        <MudText Typo="Typo.h6" Class="kanban-board-empty__title">Brak kolumn</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="kanban-board-empty__text">
+            Dodaj pierwszą kolumnę, aby rozpocząć
+        </MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OpenNewColumnDialog"
+                   StartIcon="@Icons.Material.Filled.Add" Class="mt-4">
+            Dodaj kolumnę
+        </MudButton>
+    </div>
+}
+else
+{
+    <MudDropContainer @ref="_dropContainer"
+                      T="TaskItem"
+                      Items="AllTasks"
+                      ItemsSelector="@((item, zone) => item.ColumnId.ToString() == zone)"
+                      ItemDropped="OnTaskDropped"
+                      DraggingClass="task-card--dragging"
+                      Class="kanban-board">
+        <ChildContent>
+            @foreach (var column in Columns.OrderBy(c => c.Order))
+            {
+                <KanbanColumn Column="column" OnColumnChanged="HandleColumnChanged" />
+            }
 
-        <div class="kanban-add-column">
-            <button class="kanban-add-column__btn" @onclick="OpenNewColumnDialog">+ Dodaj kolumnę</button>
-        </div>
-    </ChildContent>
-    <ItemRenderer>
-        <TaskCard Task="@context" OnClick="HandleTaskClick" OnDelete="HandleTaskDelete" />
-    </ItemRenderer>
-</MudDropContainer>
+            <div class="kanban-add-column">
+                <button class="kanban-add-column__btn" @onclick="OpenNewColumnDialog">+ Dodaj kolumnę</button>
+            </div>
+        </ChildContent>
+        <ItemRenderer>
+            <TaskCard Task="@context" OnClick="HandleTaskClick" OnDelete="HandleTaskDelete" />
+        </ItemRenderer>
+    </MudDropContainer>
+}
 
 @code {
     [Parameter, EditorRequired]
@@ -40,6 +58,7 @@
     public EventCallback OnColumnChanged { get; set; }
 
     private MudDropContainer<TaskItem>? _dropContainer;
+    private bool _shortcutsRegistered;
 
     private List<TaskItem> AllTasks =>
         Columns.SelectMany(c => c.Tasks)
@@ -57,6 +76,20 @@
         _dropContainer?.Refresh();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_shortcutsRegistered)
+        {
+            _shortcutsRegistered = true;
+            await RegisterKeyboardShortcuts();
+        }
+        if (_filterDirty)
+        {
+            _filterDirty = false;
+            _dropContainer?.Refresh();
+        }
+    }
+
     private bool _filterDirty;
 
     private void HandleFilterChanged()
@@ -65,18 +98,45 @@
         InvokeAsync(StateHasChanged);
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    private async Task RegisterKeyboardShortcuts()
     {
-        if (_filterDirty)
-        {
-            _filterDirty = false;
-            _dropContainer?.Refresh();
-        }
+        await JS.InvokeVoidAsync("eval", @"
+            if (!window._kanbanShortcutHandler) {
+                window._kanbanShortcutHandler = function(e) {
+                    var tag = e.target.tagName;
+                    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+                    if (e.target.closest('.mud-dialog-container')) return;
+                    if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                        e.preventDefault();
+                        window.kanbanInterop.focusFirstAddTask();
+                    }
+                };
+                document.addEventListener('keydown', window._kanbanShortcutHandler);
+            }
+        ");
     }
 
-    public void Dispose()
+    private async Task UnregisterKeyboardShortcuts()
+    {
+        await JS.InvokeVoidAsync("eval", @"
+            if (window._kanbanShortcutHandler) {
+                document.removeEventListener('keydown', window._kanbanShortcutHandler);
+                window._kanbanShortcutHandler = null;
+            }
+        ");
+    }
+
+    public async ValueTask DisposeAsync()
     {
         FilterState.OnFilterChanged -= HandleFilterChanged;
+        try
+        {
+            await UnregisterKeyboardShortcuts();
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit disconnected, ignore
+        }
     }
 
     private async Task HandleColumnChanged()
@@ -140,10 +200,16 @@
         }
     }
 
+    private static readonly DialogOptions _dialogOptions = new()
+    {
+        CloseOnEscapeKey = true,
+        BackdropClick = true
+    };
+
     private async Task OpenNewColumnDialog()
     {
         var parameters = new DialogParameters { ["BoardId"] = BoardId };
-        var dialog = await DialogService.ShowAsync<AddColumnDialog>("Nowa kolumna", parameters);
+        var dialog = await DialogService.ShowAsync<AddColumnDialog>("Nowa kolumna", parameters, _dialogOptions);
         var result = await dialog.Result;
 
         if (result is { Canceled: false })

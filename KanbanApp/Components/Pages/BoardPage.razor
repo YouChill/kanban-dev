@@ -35,6 +35,7 @@ else if (_board is null)
 else
 {
     <KanbanBoard Columns="_board.Columns" BoardId="_board.Id" OnColumnChanged="LoadBoard" />
+    <BoardStatisticsPanel @bind-IsOpen="_statsOpen" Columns="_board.Columns" />
 }
 
 @code {
@@ -46,6 +47,7 @@ else
 
     private Board? _board;
     private bool _loading = true;
+    private bool _statsOpen;
     private int _lastLoadedId = -1;
 
     protected override async Task OnParametersSetAsync()
@@ -72,12 +74,18 @@ else
                 .Select(g => g.First())
                 .OrderBy(t => t.Name)
                 .ToList();
-            Layout?.SetPageInfo(_board.Name, "Tablice", "/boards", availableTags);
+            Layout?.SetPageInfo(_board.Name, "Tablice", "/boards", availableTags, ToggleStats);
         }
         else
         {
             Layout?.SetPageInfo("Tablica nie znaleziona");
         }
+    }
+
+    private void ToggleStats()
+    {
+        _statsOpen = !_statsOpen;
+        StateHasChanged();
     }
 
     private void GoToBoards()

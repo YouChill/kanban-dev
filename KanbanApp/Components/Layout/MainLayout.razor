@@ -21,6 +21,13 @@
                         {
                             <FilterBar AvailableTags="_filterTags" />
                         }
+                        @if (_onStatsToggle is not null)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.BarChart"
+                                           Size="Size.Small"
+                                           Title="Statystyki tablicy"
+                                           OnClick="HandleStatsToggle" />
+                        }
                     </Actions>
                 </TopBar>
 
@@ -50,6 +57,7 @@
     private string? _breadcrumbHref;
     private bool _showFilterBar;
     private List<Tag> _filterTags = [];
+    private Action? _onStatsToggle;
 
     private readonly MudTheme _theme = new()
     {
@@ -69,17 +77,24 @@
         _breadcrumbHref = breadcrumbHref;
         _showFilterBar = false;
         _filterTags = [];
+        _onStatsToggle = null;
         StateHasChanged();
     }
 
-    public void SetPageInfo(string title, string? breadcrumbText, string? breadcrumbHref, List<Tag> availableTags)
+    public void SetPageInfo(string title, string? breadcrumbText, string? breadcrumbHref, List<Tag> availableTags, Action? onStatsToggle = null)
     {
         _pageTitle = title;
         _breadcrumbText = breadcrumbText;
         _breadcrumbHref = breadcrumbHref;
         _showFilterBar = true;
         _filterTags = availableTags;
+        _onStatsToggle = onStatsToggle;
         StateHasChanged();
+    }
+
+    private void HandleStatsToggle()
+    {
+        _onStatsToggle?.Invoke();
     }
 
     private void ToggleSidebar()

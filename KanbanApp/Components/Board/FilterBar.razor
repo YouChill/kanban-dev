@@ -40,7 +40,7 @@
             @foreach (var tag in AvailableTags)
             {
                 var capturedTag = tag;
-                var isSelected = FilterState.SelectedTagIds.Contains(capturedTag.Id);
+                var isSelected = _selectedTagIds.Contains(capturedTag.Id);
                 <button class="filter-bar__chip @(isSelected ? "filter-bar__chip--active" : "")"
                         style="@GetChipStyle(capturedTag, isSelected)"
                         @onclick="() => ToggleTag(capturedTag.Id)">
@@ -50,7 +50,7 @@
         </div>
     }
 
-    @if (FilterState.ActiveFilterCount > 0)
+    @if (ActiveFilterCount > 0)
     {
         <MudButton Variant="Variant.Text"
                    Color="Color.Error"
@@ -61,15 +61,15 @@
             Wyczyść
         </MudButton>
 
-        <span class="filter-bar__badge">@FilterState.ActiveFilterCount</span>
+        <span class="filter-bar__badge">@ActiveFilterCount</span>
     }
 </div>
 
 <!-- Mobile filter button (< 1280px) -->
 <div class="filter-bar-mobile">
-    <MudBadge Content="@FilterState.ActiveFilterCount"
+    <MudBadge Content="@ActiveFilterCount"
               Color="Color.Primary"
-              Visible="FilterState.ActiveFilterCount > 0"
+              Visible="ActiveFilterCount > 0"
               Overlap="true">
         <MudIconButton Icon="@Icons.Material.Filled.FilterList"
                        OnClick="ToggleMobileFilters"
@@ -120,7 +120,7 @@
                     @foreach (var tag in AvailableTags)
                     {
                         var capturedTag = tag;
-                        var isSelected = FilterState.SelectedTagIds.Contains(capturedTag.Id);
+                        var isSelected = _selectedTagIds.Contains(capturedTag.Id);
                         <button class="filter-bar__chip @(isSelected ? "filter-bar__chip--active" : "")"
                                 style="@GetChipStyle(capturedTag, isSelected)"
                                 @onclick="() => ToggleTag(capturedTag.Id)">
@@ -130,7 +130,7 @@
                 </div>
             }
 
-            @if (FilterState.ActiveFilterCount > 0)
+            @if (ActiveFilterCount > 0)
             {
                 <MudButton Variant="Variant.Text"
                            Color="Color.Error"
@@ -138,7 +138,7 @@
                            OnClick="ClearFilters"
                            StartIcon="@Icons.Material.Filled.Clear"
                            FullWidth="true">
-                    Wyczyść filtry (@FilterState.ActiveFilterCount)
+                    Wyczyść filtry (@ActiveFilterCount)
                 </MudButton>
             }
         </div>
@@ -151,13 +151,26 @@
 
     private string _searchText = string.Empty;
     private IEnumerable<Priority> _selectedPriorities = [];
+    private HashSet<int> _selectedTagIds = [];
     private bool _mobileOpen;
+
+    private int ActiveFilterCount
+    {
+        get
+        {
+            var count = 0;
+            if (!string.IsNullOrWhiteSpace(_searchText)) count++;
+            if (_selectedPriorities.Any()) count++;
+            if (_selectedTagIds.Count > 0) count++;
+            return count;
+        }
+    }
 
     protected override void OnInitialized()
     {
-        FilterState.OnFilterChanged += HandleFilterChanged;
         _searchText = FilterState.SearchText;
         _selectedPriorities = FilterState.SelectedPriorities;
+        _selectedTagIds = new HashSet<int>(FilterState.SelectedTagIds);
     }
 
     private void OnSearchChanged(string value)
@@ -174,29 +187,24 @@
 
     private void ToggleTag(int tagId)
     {
-        var current = new HashSet<int>(FilterState.SelectedTagIds);
-        if (!current.Remove(tagId))
+        if (!_selectedTagIds.Remove(tagId))
         {
-            current.Add(tagId);
+            _selectedTagIds.Add(tagId);
         }
-        FilterState.SetTags(current);
+        FilterState.SetTags(_selectedTagIds);
     }
 
     private void ClearFilters()
     {
         _searchText = string.Empty;
         _selectedPriorities = [];
+        _selectedTagIds = [];
         FilterState.ClearAll();
     }
 
     private void ToggleMobileFilters()
     {
         _mobileOpen = !_mobileOpen;
-    }
-
-    private void HandleFilterChanged()
-    {
-        InvokeAsync(StateHasChanged);
     }
 
     private static string GetPriorityLabel(Priority p) => p switch
@@ -218,6 +226,5 @@
 
     public void Dispose()
     {
-        FilterState.OnFilterChanged -= HandleFilterChanged;
     }
 }

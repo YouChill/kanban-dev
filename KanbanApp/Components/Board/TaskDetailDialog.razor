@@ -4,6 +4,7 @@
 @inject ITaskService TaskService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject INotificationService Notify
 
 <MudDialog Class="task-detail-dialog">
     <DialogContent>
@@ -286,14 +287,24 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _task = await TaskService.GetTaskByIdAsync(TaskId);
-        if (_task is not null)
+        try
         {
-            _titleValue = _task.Title;
-            _descriptionValue = _task.Description;
-            _dueDateValue = _task.DueDate;
+            _task = await TaskService.GetTaskByIdAsync(TaskId);
+            if (_task is not null)
+            {
+                _titleValue = _task.Title;
+                _descriptionValue = _task.Description;
+                _dueDateValue = _task.DueDate;
+            }
         }
-        _loading = false;
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się załadować zadania");
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     // ── Title editing ──
@@ -371,7 +382,15 @@
     private async Task ToggleChecklistItem(ChecklistItem item)
     {
         item.IsDone = !item.IsDone;
-        await TaskService.UpdateChecklistItemAsync(item);
+        try
+        {
+            await TaskService.UpdateChecklistItemAsync(item);
+        }
+        catch (Exception)
+        {
+            item.IsDone = !item.IsDone;
+            Notify.ShowError("Nie udało się zaktualizować elementu checklisty");
+        }
     }
 
     private void StartEditingChecklistItem(ChecklistItem item)
@@ -406,20 +425,34 @@
 
     private async Task DeleteChecklistItem(ChecklistItem item)
     {
-        await TaskService.DeleteChecklistItemAsync(item.Id);
-        _task!.ChecklistItems.Remove(item);
+        try
+        {
+            await TaskService.DeleteChecklistItemAsync(item.Id);
+            _task!.ChecklistItems.Remove(item);
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się usunąć elementu checklisty");
+        }
     }
 
     private async Task HandleNewChecklistKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newChecklistText))
         {
-            var newItem = await TaskService.AddChecklistItemAsync(_task!.Id, _newChecklistText.Trim());
-            // EF Core fix-up adds to _task.ChecklistItems automatically;
-            // guard against environments where it doesn't
-            if (!_task.ChecklistItems.Any(c => c.Id == newItem.Id))
-                _task.ChecklistItems.Add(newItem);
-            _newChecklistText = string.Empty;
+            try
+            {
+                var newItem = await TaskService.AddChecklistItemAsync(_task!.Id, _newChecklistText.Trim());
+                // EF Core fix-up adds to _task.ChecklistItems automatically;
+                // guard against environments where it doesn't
+                if (!_task.ChecklistItems.Any(c => c.Id == newItem.Id))
+                    _task.ChecklistItems.Add(newItem);
+                _newChecklistText = string.Empty;
+            }
+            catch (Exception)
+            {
+                Notify.ShowError("Nie udało się dodać elementu checklisty");
+            }
         }
     }
 
@@ -457,17 +490,19 @@
     {
         if (_task is null) return;
 
-        var success = await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
-        if (success)
+        try
         {
-            if (!_task.Tags.Any(t => t.Id == tag.Id))
-                _task.Tags.Add(tag);
-            Snackbar.Add($"Dodano tag \"{tag.Name}\"", Severity.Success, config =>
+            var success = await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
+            if (success)
             {
-                config.ShowTransitionDuration = 200;
-                config.HideTransitionDuration = 200;
-                config.VisibleStateDuration = 1500;
-            });
+                if (!_task.Tags.Any(t => t.Id == tag.Id))
+                    _task.Tags.Add(tag);
+                Notify.ShowSuccess($"Dodano tag \"{tag.Name}\"");
+            }
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się dodać tagu");
         }
     }
 
@@ -475,16 +510,18 @@
     {
         if (_task is null) return;
 
-        var success = await TaskService.RemoveTagFromTaskAsync(_task.Id, tag.Id);
-        if (success)
+        try
         {
-            _task.Tags.RemoveAll(t => t.Id == tag.Id);
-            Snackbar.Add($"Usunięto tag \"{tag.Name}\"", Severity.Info, config =>
+            var success = await TaskService.RemoveTagFromTaskAsync(_task.Id, tag.Id);
+            if (success)
             {
-                config.ShowTransitionDuration = 200;
-                config.HideTransitionDuration = 200;
-                config.VisibleStateDuration = 1500;
-            });
+                _task.Tags.RemoveAll(t => t.Id == tag.Id);
+                Notify.ShowInfo($"Usunięto tag \"{tag.Name}\"");
+            }
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się usunąć tagu");
         }
     }
 
@@ -492,23 +529,25 @@
     {
         if (_task is null || string.IsNullOrWhiteSpace(_newTagName)) return;
 
-        var tag = await TaskService.CreateTagAsync(_newTagName, _newTagColor);
-        _allTags.Add(tag);
-        await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
-        if (!_task.Tags.Any(t => t.Id == tag.Id))
-            _task.Tags.Add(tag);
-
-        // Reset create form
-        _newTagName = string.Empty;
-        _newTagColor = "#6366f1";
-        _showCreateTag = false;
-
-        Snackbar.Add($"Utworzono i dodano tag \"{tag.Name}\"", Severity.Success, config =>
+        try
         {
-            config.ShowTransitionDuration = 200;
-            config.HideTransitionDuration = 200;
-            config.VisibleStateDuration = 1500;
-        });
+            var tag = await TaskService.CreateTagAsync(_newTagName, _newTagColor);
+            _allTags.Add(tag);
+            await TaskService.AddTagToTaskAsync(_task.Id, tag.Id);
+            if (!_task.Tags.Any(t => t.Id == tag.Id))
+                _task.Tags.Add(tag);
+
+            // Reset create form
+            _newTagName = string.Empty;
+            _newTagColor = "#6366f1";
+            _showCreateTag = false;
+
+            Notify.ShowSuccess($"Utworzono i dodano tag \"{tag.Name}\"");
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się utworzyć tagu");
+        }
     }
 
     private void CancelCreateTag()
@@ -522,13 +561,15 @@
 
     private async Task PersistTask()
     {
-        await TaskService.UpdateTaskAsync(_task!);
-        Snackbar.Add("Zapisano", Severity.Success, config =>
+        try
         {
-            config.ShowTransitionDuration = 200;
-            config.HideTransitionDuration = 200;
-            config.VisibleStateDuration = 1500;
-        });
+            await TaskService.UpdateTaskAsync(_task!);
+            Notify.ShowSuccess("Zapisano");
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się zapisać zmian");
+        }
     }
 
     // ── Delete ──
@@ -543,8 +584,15 @@
 
         if (confirmed == true)
         {
-            await TaskService.DeleteTaskAsync(TaskId);
-            MudDialog.Close(DialogResult.Ok(true));
+            try
+            {
+                await TaskService.DeleteTaskAsync(TaskId);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            catch (Exception)
+            {
+                Notify.ShowError("Nie udało się usunąć zadania");
+            }
         }
     }
 

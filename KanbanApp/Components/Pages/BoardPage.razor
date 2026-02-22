@@ -7,6 +7,7 @@
 @inject IBoardService BoardService
 @inject BoardFilterState FilterState
 @inject NavigationManager Navigation
+@inject INotificationService Notify
 @implements IDisposable
 
 <PageTitle>@(_board?.Name ?? "Tablica") – KanbanApp</PageTitle>
@@ -16,6 +17,21 @@
     <div class="boards-loading">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
         <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Ładowanie tablicy...</MudText>
+    </div>
+}
+else if (_error)
+{
+    <div class="boards-empty">
+        <MudIcon Icon="@Icons.Material.Outlined.ErrorOutline"
+                 Style="font-size: 80px; color: #ef4444; opacity: 0.6;" />
+        <MudText Typo="Typo.h5" Color="Color.Secondary" Class="mt-4">Błąd ładowania tablicy</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Nie udało się załadować danych. Spróbuj ponownie.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadBoard">
+            Spróbuj ponownie
+        </MudButton>
     </div>
 }
 else if (_board is null)
@@ -47,6 +63,7 @@ else
 
     private Board? _board;
     private bool _loading = true;
+    private bool _error;
     private bool _statsOpen;
     private int _lastLoadedId = -1;
 
@@ -62,8 +79,22 @@ else
     private async Task LoadBoard()
     {
         _loading = true;
-        _board = await BoardService.GetBoardByIdAsync(Id);
-        _loading = false;
+        _error = false;
+
+        try
+        {
+            _board = await BoardService.GetBoardByIdAsync(Id);
+        }
+        catch (Exception)
+        {
+            _board = null;
+            _error = true;
+            Notify.ShowError("Nie udało się załadować tablicy");
+        }
+        finally
+        {
+            _loading = false;
+        }
 
         if (_board is not null)
         {
@@ -76,7 +107,7 @@ else
                 .ToList();
             Layout?.SetPageInfo(_board.Name, "Tablice", "/boards", availableTags, ToggleStats);
         }
-        else
+        else if (!_error)
         {
             Layout?.SetPageInfo("Tablica nie znaleziona");
         }

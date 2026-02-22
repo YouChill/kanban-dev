@@ -1,6 +1,7 @@
 @using KanbanApp.Models
 @using KanbanApp.Services.Interfaces
 @inject IColumnService ColumnService
+@inject INotificationService Notify
 
 <MudDialog>
     <DialogContent>
@@ -91,16 +92,23 @@
 
         var color = string.IsNullOrWhiteSpace(_color) ? null : _color.Trim();
 
-        if (_isEditMode)
+        try
         {
-            await ColumnService.UpdateColumnAsync(ExistingColumn!.Id, _name.Trim(), color, _wipLimit);
-        }
-        else
-        {
-            await ColumnService.CreateColumnAsync(BoardId, _name.Trim(), color, _wipLimit);
-        }
+            if (_isEditMode)
+            {
+                await ColumnService.UpdateColumnAsync(ExistingColumn!.Id, _name.Trim(), color, _wipLimit);
+            }
+            else
+            {
+                await ColumnService.CreateColumnAsync(BoardId, _name.Trim(), color, _wipLimit);
+            }
 
-        MudDialog.Close(DialogResult.Ok(true));
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception)
+        {
+            Notify.ShowError(_isEditMode ? "Nie udało się zaktualizować kolumny" : "Nie udało się utworzyć kolumny");
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();

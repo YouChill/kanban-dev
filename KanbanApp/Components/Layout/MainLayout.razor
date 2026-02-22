@@ -23,10 +23,11 @@
                         }
                         @if (_onStatsToggle is not null)
                         {
-                            <MudIconButton Icon="@Icons.Material.Outlined.BarChart"
-                                           Size="Size.Small"
-                                           Title="Statystyki tablicy"
-                                           OnClick="HandleStatsToggle" />
+                            <MudTooltip Text="Statystyki tablicy">
+                                <MudIconButton Icon="@Icons.Material.Outlined.BarChart"
+                                               Size="Size.Small"
+                                               OnClick="HandleStatsToggle" />
+                            </MudTooltip>
                         }
                     </Actions>
                 </TopBar>

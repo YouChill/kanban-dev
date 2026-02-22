@@ -1,0 +1,164 @@
+@using KanbanApp.Models
+
+<MudDrawer @bind-Open="IsOpen"
+           Anchor="Anchor.Right"
+           Elevation="2"
+           Variant="DrawerVariant.Temporary"
+           Width="340px"
+           Class="stats-drawer">
+    <div class="stats-panel">
+        <div class="stats-panel__header">
+            <MudText Typo="Typo.h6" Class="stats-panel__title">Statystyki tablicy</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="Close" />
+        </div>
+
+        @if (Columns.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="stats-panel__empty">
+                Brak kolumn do wyświetlenia.
+            </MudText>
+        }
+        else
+        {
+            @* Overdue summary *@
+            <div class="stats-panel__section">
+                <div class="stats-panel__section-header">
+                    <MudIcon Icon="@Icons.Material.Outlined.Warning" Size="Size.Small" Style="color: #ef4444;" />
+                    <MudText Typo="Typo.subtitle2">Zadania przeterminowane</MudText>
+                </div>
+                <div class="stats-panel__overdue-count">
+                    <span class="stats-panel__overdue-number @(OverdueCount > 0 ? "stats-panel__overdue-number--active" : "")">
+                        @OverdueCount
+                    </span>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @(OverdueCount == 1 ? "zadanie po terminie" : OverdueCount >= 2 && OverdueCount <= 4 ? "zadania po terminie" : "zadań po terminie")
+                    </MudText>
+                </div>
+            </div>
+
+            @* Checklist completion *@
+            <div class="stats-panel__section">
+                <div class="stats-panel__section-header">
+                    <MudIcon Icon="@Icons.Material.Outlined.Checklist" Size="Size.Small" Style="color: #22c55e;" />
+                    <MudText Typo="Typo.subtitle2">Ukończenie checklist</MudText>
+                </div>
+                <div class="stats-panel__checklist-stat">
+                    <MudProgressLinear Value="@ChecklistPercentage"
+                                       Color="@(ChecklistPercentage == 100 ? Color.Success : Color.Primary)"
+                                       Rounded="true"
+                                       Size="Size.Medium"
+                                       Class="stats-panel__progress" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @ChecklistPercentage.ToString("0")% zadań z ukończonymi checklistami
+                    </MudText>
+                </div>
+            </div>
+
+            @* Tasks per column *@
+            <div class="stats-panel__section">
+                <div class="stats-panel__section-header">
+                    <MudIcon Icon="@Icons.Material.Outlined.ViewColumn" Size="Size.Small" Style="color: var(--accent);" />
+                    <MudText Typo="Typo.subtitle2">Zadania w kolumnach</MudText>
+                </div>
+                <div class="stats-panel__columns">
+                    @foreach (var col in Columns.OrderBy(c => c.Order))
+                    {
+                        var taskCount = col.Tasks.Count;
+                        var maxTasks = Columns.Max(c => c.Tasks.Count);
+                        var barWidth = maxTasks > 0 ? (double)taskCount / maxTasks * 100 : 0;
+                        var wipStatus = GetWipStatus(col);
+
+                        <div class="stats-panel__column-row">
+                            <div class="stats-panel__column-info">
+                                <span class="stats-panel__column-dot" style="background-color: @(col.Color ?? "var(--accent)")"></span>
+                                <span class="stats-panel__column-name">@col.Name</span>
+                                <span class="stats-panel__column-count">@taskCount</span>
+                                @if (col.WipLimit.HasValue)
+                                {
+                                    <span class="stats-panel__wip-badge stats-panel__wip-badge--@wipStatus">
+                                        @GetWipLabel(wipStatus)
+                                    </span>
+                                }
+                            </div>
+                            <div class="stats-panel__column-bar-bg">
+                                <div class="stats-panel__column-bar"
+                                     style="width: @barWidth.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%; background-color: @(col.Color ?? "var(--accent)")">
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* Total tasks *@
+            <div class="stats-panel__footer">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Łącznie: <strong>@TotalTasks</strong> @(TotalTasks == 1 ? "zadanie" : TotalTasks >= 2 && TotalTasks <= 4 ? "zadania" : "zadań")
+                </MudText>
+            </div>
+        }
+    </div>
+</MudDrawer>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter]
+    public List<Column> Columns { get; set; } = [];
+
+    private int TotalTasks => Columns.Sum(c => c.Tasks.Count);
+
+    private int OverdueCount => Columns
+        .SelectMany(c => c.Tasks)
+        .Count(t => t.DueDate.HasValue && t.DueDate.Value.Date < DateTime.Today && t.CompletedAt is null);
+
+    private double ChecklistPercentage
+    {
+        get
+        {
+            var tasksWithChecklists = Columns
+                .SelectMany(c => c.Tasks)
+                .Where(t => t.ChecklistItems.Count > 0)
+                .ToList();
+
+            if (tasksWithChecklists.Count == 0) return 0;
+
+            var completed = tasksWithChecklists.Count(t =>
+            {
+                var done = t.ChecklistItems.Count(c => c.IsDone);
+                var total = t.ChecklistItems.Count;
+                return total > 0 && done == total;
+            });
+
+            return (double)completed / tasksWithChecklists.Count * 100;
+        }
+    }
+
+    private static string GetWipStatus(Column col)
+    {
+        if (!col.WipLimit.HasValue) return "none";
+        if (col.Tasks.Count > col.WipLimit.Value) return "exceeded";
+        if (col.Tasks.Count == col.WipLimit.Value) return "at-limit";
+        return "ok";
+    }
+
+    private static string GetWipLabel(string status) => status switch
+    {
+        "ok" => "OK",
+        "at-limit" => "Limit",
+        "exceeded" => "Przekroczony",
+        _ => ""
+    };
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

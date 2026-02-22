@@ -37,8 +37,14 @@
 
             @if (Task.DueDate.HasValue)
             {
-                var isOverdue = Task.DueDate.Value < DateTime.UtcNow && Task.CompletedAt is null;
-                <span class="task-card__due @(isOverdue ? "task-card__due--overdue" : "")">
+                var isOverdue = Task.DueDate.Value.Date < DateTime.Today && Task.CompletedAt is null;
+                var overdueDays = isOverdue ? (DateTime.Today - Task.DueDate.Value.Date).Days : 0;
+                <span class="task-card__due @(isOverdue ? "task-card__due--overdue" : "")"
+                      title="@(isOverdue ? $"Termin minął {overdueDays} dni temu" : $"Termin: {Task.DueDate.Value:dd MMM yyyy}")">
+                    @if (isOverdue)
+                    {
+                        <span class="task-card__due-icon">⚠️</span>
+                    }
                     @Task.DueDate.Value.ToString("dd MMM")
                 </span>
             }

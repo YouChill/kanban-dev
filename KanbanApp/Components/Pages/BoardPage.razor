@@ -105,7 +105,7 @@ else
                 .Select(g => g.First())
                 .OrderBy(t => t.Name)
                 .ToList();
-            Layout?.SetPageInfo(_board.Name, "Tablice", "/boards", availableTags, ToggleStats);
+            Layout?.SetPageInfo(_board.Name, "Tablice", "/boards", _board.Id, availableTags, ToggleStats);
         }
         else if (!_error)
         {

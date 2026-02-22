@@ -57,13 +57,21 @@
         _dropContainer?.Refresh();
     }
 
+    private bool _filterDirty;
+
     private void HandleFilterChanged()
     {
-        InvokeAsync(() =>
+        _filterDirty = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_filterDirty)
         {
+            _filterDirty = false;
             _dropContainer?.Refresh();
-            StateHasChanged();
-        });
+        }
     }
 
     public void Dispose()

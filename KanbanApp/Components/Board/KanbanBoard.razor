@@ -5,6 +5,7 @@
 @inject IDialogService DialogService
 @inject ITaskService TaskService
 @inject ISnackbar Snackbar
+@inject INotificationService Notify
 @inject BoardFilterState FilterState
 @inject IJSRuntime JS
 
@@ -151,21 +152,29 @@ else
         var targetColumnId = int.Parse(dropItem.DropzoneIdentifier);
         var movingAcrossColumns = dropItem.Item.ColumnId != targetColumnId;
 
-        if (movingAcrossColumns && !await TaskService.CanMoveToColumnAsync(targetColumnId))
+        try
         {
-            Snackbar.Add("Kolumna osiągnęła limit WIP", Severity.Warning);
-            return;
+            if (movingAcrossColumns && !await TaskService.CanMoveToColumnAsync(targetColumnId))
+            {
+                Snackbar.Add("Kolumna osiągnęła limit WIP", Severity.Warning);
+                return;
+            }
+
+            // Update local state for immediate UI feedback
+            dropItem.Item.ColumnId = targetColumnId;
+            dropItem.Item.Order = dropItem.IndexInZone;
+
+            // Persist to database
+            await TaskService.MoveTaskAsync(dropItem.Item.Id, targetColumnId, dropItem.IndexInZone);
+
+            // Reload to sync full state
+            await HandleColumnChanged();
         }
-
-        // Update local state for immediate UI feedback
-        dropItem.Item.ColumnId = targetColumnId;
-        dropItem.Item.Order = dropItem.IndexInZone;
-
-        // Persist to database
-        await TaskService.MoveTaskAsync(dropItem.Item.Id, targetColumnId, dropItem.IndexInZone);
-
-        // Reload to sync full state
-        await HandleColumnChanged();
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się przenieść zadania");
+            await HandleColumnChanged();
+        }
     }
 
     private async Task HandleTaskClick(TaskItem task)
@@ -195,8 +204,15 @@ else
 
         if (confirmed == true)
         {
-            await TaskService.DeleteTaskAsync(task.Id);
-            await HandleColumnChanged();
+            try
+            {
+                await TaskService.DeleteTaskAsync(task.Id);
+                await HandleColumnChanged();
+            }
+            catch (Exception)
+            {
+                Notify.ShowError("Nie udało się usunąć zadania");
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 @using KanbanApp.Services.Interfaces
 @inject IBoardService BoardService
+@inject INotificationService Notify
 
 <MudDialog>
     <DialogContent>
@@ -28,8 +29,15 @@
         if (string.IsNullOrWhiteSpace(_name))
             return;
 
-        await BoardService.CreateBoardAsync(_name.Trim(), _description?.Trim());
-        MudDialog.Close(DialogResult.Ok(true));
+        try
+        {
+            await BoardService.CreateBoardAsync(_name.Trim(), _description?.Trim());
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się utworzyć tablicy");
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();

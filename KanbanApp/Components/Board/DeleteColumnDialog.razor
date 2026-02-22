@@ -1,5 +1,6 @@
 @using KanbanApp.Services.Interfaces
 @inject IColumnService ColumnService
+@inject INotificationService Notify
 
 <MudDialog>
     <DialogContent>
@@ -43,10 +44,17 @@
 
     private async Task Confirm()
     {
-        var deleted = await ColumnService.DeleteColumnAsync(ColumnId);
-        if (deleted)
+        try
         {
-            MudDialog.Close(DialogResult.Ok(true));
+            var deleted = await ColumnService.DeleteColumnAsync(ColumnId);
+            if (deleted)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się usunąć kolumny");
         }
     }
 

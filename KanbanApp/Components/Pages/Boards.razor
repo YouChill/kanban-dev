@@ -4,6 +4,7 @@
 @inject IBoardService BoardService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
+@inject INotificationService Notify
 
 <PageTitle>Tablice</PageTitle>
 
@@ -12,6 +13,21 @@
     <div class="boards-loading">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
         <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Ładowanie tablic...</MudText>
+    </div>
+}
+else if (_error)
+{
+    <div class="boards-empty">
+        <MudIcon Icon="@Icons.Material.Outlined.ErrorOutline"
+                 Style="font-size: 80px; color: #ef4444; opacity: 0.6;" />
+        <MudText Typo="Typo.h5" Color="Color.Secondary" Class="mt-4">Błąd ładowania</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Nie udało się załadować tablic. Spróbuj ponownie.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadBoards">
+            Spróbuj ponownie
+        </MudButton>
     </div>
 }
 else if (_boards is null || _boards.Count == 0)
@@ -64,6 +80,7 @@ else
 @code {
     private List<Board>? _boards;
     private bool _loading = true;
+    private bool _error;
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,8 +90,22 @@ else
     private async Task LoadBoards()
     {
         _loading = true;
-        _boards = await BoardService.GetAllBoardsAsync();
-        _loading = false;
+        _error = false;
+
+        try
+        {
+            _boards = await BoardService.GetAllBoardsAsync();
+        }
+        catch (Exception)
+        {
+            _boards = null;
+            _error = true;
+            Notify.ShowError("Nie udało się załadować tablic");
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task OpenNewBoardDialog()

@@ -1,0 +1,42 @@
+@using MudBlazor
+@inherits ErrorBoundary
+
+@if (CurrentException is not null)
+{
+    <div class="error-boundary">
+        <MudPaper Elevation="0" Class="error-boundary__card">
+            <MudIcon Icon="@Icons.Material.Outlined.ErrorOutline"
+                     Color="Color.Error"
+                     Style="font-size: 64px;" />
+            <MudText Typo="Typo.h5" Class="mt-4">Coś poszło nie tak</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2 mb-4">
+                Wystąpił nieoczekiwany błąd. Spróbuj ponownie lub odśwież stronę.
+            </MudText>
+            <div class="error-boundary__actions">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="HandleRecover">
+                    Spróbuj ponownie
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Home"
+                           Href="/boards">
+                    Wróć do tablic
+                </MudButton>
+            </div>
+        </MudPaper>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    private void HandleRecover()
+    {
+        Recover();
+    }
+}

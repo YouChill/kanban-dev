@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @using KanbanApp.Models
 @using KanbanApp.Components.Board
+@using KanbanApp.Components.Shared
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -33,7 +34,9 @@
                 </TopBar>
 
                 <main class="app-layout__content">
-                    @Body
+                    <AppErrorBoundary>
+                        @Body
+                    </AppErrorBoundary>
                 </main>
             </div>
         </div>

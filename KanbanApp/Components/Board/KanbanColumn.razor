@@ -6,6 +6,7 @@
 @inject ITaskService TaskService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject INotificationService Notify
 @inject IJSRuntime JS
 @inject BoardFilterState FilterState
 
@@ -162,11 +163,18 @@
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTaskTitle))
         {
-            await TaskService.CreateTaskAsync(Column.Id, _newTaskTitle.Trim(), Priority.Medium);
-            _newTaskTitle = string.Empty;
-            _isAddingTask = false;
-            _scrollToNewTask = true;
-            await OnColumnChanged.InvokeAsync();
+            try
+            {
+                await TaskService.CreateTaskAsync(Column.Id, _newTaskTitle.Trim(), Priority.Medium);
+                _newTaskTitle = string.Empty;
+                _isAddingTask = false;
+                _scrollToNewTask = true;
+                await OnColumnChanged.InvokeAsync();
+            }
+            catch (Exception)
+            {
+                Notify.ShowError("Nie udało się utworzyć zadania");
+            }
         }
         else if (e.Key == "Escape")
         {

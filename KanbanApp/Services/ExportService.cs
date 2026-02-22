@@ -8,7 +8,7 @@ namespace KanbanApp.Services;
 
 public class ExportService : IExportService
 {
-    private readonly IBoardService _boardService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ExportService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -19,9 +19,9 @@ public class ExportService : IExportService
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public ExportService(IBoardService boardService, ILogger<ExportService> logger)
+    public ExportService(IServiceScopeFactory scopeFactory, ILogger<ExportService> logger)
     {
-        _boardService = boardService;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -29,7 +29,10 @@ public class ExportService : IExportService
     {
         try
         {
-            var board = await _boardService.GetBoardByIdAsync(boardId);
+            using var scope = _scopeFactory.CreateScope();
+            var boardService = scope.ServiceProvider.GetRequiredService<IBoardService>();
+
+            var board = await boardService.GetBoardByIdAsync(boardId);
             if (board is null)
                 throw new InvalidOperationException($"Board with id {boardId} not found.");
 
@@ -85,7 +88,10 @@ public class ExportService : IExportService
     {
         try
         {
-            var board = await _boardService.GetBoardByIdAsync(boardId);
+            using var scope = _scopeFactory.CreateScope();
+            var boardService = scope.ServiceProvider.GetRequiredService<IBoardService>();
+
+            var board = await boardService.GetBoardByIdAsync(boardId);
             if (board is null)
                 throw new InvalidOperationException($"Board with id {boardId} not found.");
 

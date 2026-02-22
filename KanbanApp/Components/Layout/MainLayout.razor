@@ -15,8 +15,14 @@
             <div class="app-layout__main">
                 <TopBar Title="@_pageTitle"
                         BreadcrumbText="@_breadcrumbText"
-                        BreadcrumbHref="@_breadcrumbHref"
-                        Actions="@_topBarActions" />
+                        BreadcrumbHref="@_breadcrumbHref">
+                    <Actions>
+                        @if (_showFilterBar)
+                        {
+                            <FilterBar AvailableTags="_filterTags" />
+                        }
+                    </Actions>
+                </TopBar>
 
                 <main class="app-layout__content">
                     @Body
@@ -42,7 +48,7 @@
     private string _pageTitle = "Tablice";
     private string? _breadcrumbText;
     private string? _breadcrumbHref;
-    private RenderFragment? _topBarActions;
+    private bool _showFilterBar;
     private List<Tag> _filterTags = [];
 
     private readonly MudTheme _theme = new()
@@ -61,7 +67,7 @@
         _pageTitle = title;
         _breadcrumbText = breadcrumbText;
         _breadcrumbHref = breadcrumbHref;
-        _topBarActions = null;
+        _showFilterBar = false;
         _filterTags = [];
         StateHasChanged();
     }
@@ -71,13 +77,8 @@
         _pageTitle = title;
         _breadcrumbText = breadcrumbText;
         _breadcrumbHref = breadcrumbHref;
+        _showFilterBar = true;
         _filterTags = availableTags;
-        _topBarActions = builder =>
-        {
-            builder.OpenComponent<FilterBar>(0);
-            builder.AddAttribute(1, nameof(FilterBar.AvailableTags), _filterTags);
-            builder.CloseComponent();
-        };
         StateHasChanged();
     }
 

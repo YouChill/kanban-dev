@@ -21,6 +21,7 @@ builder.Services.AddScoped<IColumnService, ColumnService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<BoardFilterState>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IExportService, ExportService>();
 
 var app = builder.Build();
 

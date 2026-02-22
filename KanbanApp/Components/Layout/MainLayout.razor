@@ -2,6 +2,9 @@
 @using KanbanApp.Models
 @using KanbanApp.Components.Board
 @using KanbanApp.Components.Shared
+@inject IExportService ExportService
+@inject IJSRuntime JS
+@inject INotificationService Notify
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -21,6 +24,23 @@
                         @if (_showFilterBar)
                         {
                             <FilterBar AvailableTags="_filterTags" />
+                        }
+                        @if (_currentBoardId.HasValue)
+                        {
+                            <MudMenu Icon="@Icons.Material.Outlined.FileDownload"
+                                     Size="Size.Small"
+                                     AnchorOrigin="Origin.BottomRight"
+                                     TransformOrigin="Origin.TopRight"
+                                     Title="Eksportuj">
+                                <MudMenuItem OnClick="ExportJson"
+                                             Icon="@Icons.Material.Outlined.DataObject">
+                                    Eksport JSON
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="ExportCsv"
+                                             Icon="@Icons.Material.Outlined.TableChart">
+                                    Eksport CSV
+                                </MudMenuItem>
+                            </MudMenu>
                         }
                         @if (_onStatsToggle is not null)
                         {
@@ -62,6 +82,7 @@
     private bool _showFilterBar;
     private List<Tag> _filterTags = [];
     private Action? _onStatsToggle;
+    private int? _currentBoardId;
 
     private readonly MudTheme _theme = new()
     {
@@ -82,10 +103,11 @@
         _showFilterBar = false;
         _filterTags = [];
         _onStatsToggle = null;
+        _currentBoardId = null;
         StateHasChanged();
     }
 
-    public void SetPageInfo(string title, string? breadcrumbText, string? breadcrumbHref, List<Tag> availableTags, Action? onStatsToggle = null)
+    public void SetPageInfo(string title, string? breadcrumbText, string? breadcrumbHref, int boardId, List<Tag> availableTags, Action? onStatsToggle = null)
     {
         _pageTitle = title;
         _breadcrumbText = breadcrumbText;
@@ -93,6 +115,7 @@
         _showFilterBar = true;
         _filterTags = availableTags;
         _onStatsToggle = onStatsToggle;
+        _currentBoardId = boardId;
         StateHasChanged();
     }
 
@@ -104,5 +127,39 @@
     private void ToggleSidebar()
     {
         _sidebarCollapsed = !_sidebarCollapsed;
+    }
+
+    private async Task ExportJson()
+    {
+        if (!_currentBoardId.HasValue) return;
+
+        try
+        {
+            var json = await ExportService.ExportBoardToJsonAsync(_currentBoardId.Value);
+            var fileName = $"board-{_currentBoardId.Value}-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+            await JS.InvokeVoidAsync("kanbanInterop.downloadFile", fileName, json, "application/json;charset=utf-8");
+            Notify.ShowSuccess("Wyeksportowano do JSON");
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się wyeksportować do JSON");
+        }
+    }
+
+    private async Task ExportCsv()
+    {
+        if (!_currentBoardId.HasValue) return;
+
+        try
+        {
+            var csv = await ExportService.ExportTasksToCsvAsync(_currentBoardId.Value);
+            var fileName = $"board-{_currentBoardId.Value}-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            await JS.InvokeVoidAsync("kanbanInterop.downloadFile", fileName, csv, "text/csv;charset=utf-8");
+            Notify.ShowSuccess("Wyeksportowano do CSV");
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się wyeksportować do CSV");
+        }
     }
 }

@@ -13,8 +13,14 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddMudServices();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Database provider selection via DB_PROVIDER environment variable
+var dbProvider = builder.Configuration["DB_PROVIDER"] ?? "sqlite";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (dbProvider == "postgres")
+    builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+else
+    builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 
 builder.Services.AddScoped<IBoardService, BoardService>();
 builder.Services.AddScoped<IColumnService, ColumnService>();
@@ -23,21 +29,31 @@ builder.Services.AddScoped<BoardFilterState>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IExportService, ExportService>();
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
+
 var app = builder.Build();
 
 // Auto-apply pending migrations at startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
+    if (dbProvider == "postgres")
     {
         db.Database.Migrate();
     }
-    catch (Microsoft.Data.Sqlite.SqliteException)
+    else
     {
-        // Database file exists but has no migration history — recreate it
-        db.Database.EnsureDeleted();
-        db.Database.Migrate();
+        try
+        {
+            db.Database.Migrate();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            // Database file exists but has no migration history — recreate it
+            db.Database.EnsureDeleted();
+            db.Database.Migrate();
+        }
     }
 }
 
@@ -52,6 +68,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.MapHealthChecks("/healthz");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

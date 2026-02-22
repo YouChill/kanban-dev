@@ -1,0 +1,111 @@
+@using KanbanApp.Models
+@using KanbanApp.Services.Interfaces
+@inject IBoardService BoardService
+@inject INotificationService Notify
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <div style="display: flex; justify-content: center; padding: 24px;">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <MudText Typo="Typo.body1">
+                Czy na pewno chcesz usunąć tablicę <strong>@BoardName</strong>?
+            </MudText>
+            <div class="delete-board-stats">
+                <div class="delete-board-stat">
+                    <MudIcon Icon="@Icons.Material.Filled.ViewColumn" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2">@_columnCount kolumn</MudText>
+                </div>
+                <div class="delete-board-stat">
+                    <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2">@_taskCount zadań</MudText>
+                </div>
+            </div>
+            <MudText Typo="Typo.body2" Color="Color.Error" Class="mt-3">
+                Ta operacja jest nieodwracalna.
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Confirm"
+                   Disabled="@(_loading || _deleting)">
+            @if (_deleting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Usuń
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int BoardId { get; set; }
+
+    [Parameter]
+    public string BoardName { get; set; } = string.Empty;
+
+    private int _columnCount;
+    private int _taskCount;
+    private bool _loading = true;
+    private bool _deleting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var board = await BoardService.GetBoardByIdAsync(BoardId);
+            if (board is not null)
+            {
+                _columnCount = board.Columns.Count;
+                _taskCount = board.Columns.Sum(c => c.Tasks.Count);
+            }
+        }
+        catch (Exception)
+        {
+            // Fall back to zero counts
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Confirm()
+    {
+        _deleting = true;
+
+        try
+        {
+            var deleted = await BoardService.DeleteBoardAsync(BoardId);
+            if (deleted)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Notify.ShowError("Nie znaleziono tablicy do usunięcia");
+                MudDialog.Cancel();
+            }
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się usunąć tablicy");
+        }
+        finally
+        {
+            _deleting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

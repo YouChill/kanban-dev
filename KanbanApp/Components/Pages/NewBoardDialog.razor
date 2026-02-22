@@ -1,5 +1,6 @@
 @using KanbanApp.Services.Interfaces
 @inject IBoardService BoardService
+@inject IColumnService ColumnService
 @inject INotificationService Notify
 
 <MudDialog>
@@ -7,11 +8,34 @@
         <MudTextField @bind-Value="_name" Label="Nazwa" Required="true" RequiredError="Nazwa jest wymagana"
                       Variant="Variant.Outlined" Class="mb-3" />
         <MudTextField @bind-Value="_description" Label="Opis" Lines="3"
-                      Variant="Variant.Outlined" />
+                      Variant="Variant.Outlined" Class="mb-4" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Szablon</MudText>
+        <div class="template-selector">
+            @foreach (var template in _templates)
+            {
+                <div class="template-option @(template.Key == _selectedTemplate ? "template-option--selected" : "")"
+                     @onclick="() => _selectedTemplate = template.Key">
+                    <MudIcon Icon="@template.Value.Icon" Size="Size.Medium"
+                             Color="@(template.Key == _selectedTemplate ? Color.Primary : Color.Default)" />
+                    <MudText Typo="Typo.body2" Class="mt-1">
+                        <strong>@template.Value.Name</strong>
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @template.Value.Description
+                    </MudText>
+                </div>
+            }
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Anuluj</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(string.IsNullOrWhiteSpace(_name))">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_name) || _submitting)">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
             Utwórz
         </MudButton>
     </DialogActions>
@@ -23,20 +47,62 @@
 
     private string _name = string.Empty;
     private string? _description;
+    private string _selectedTemplate = "kanban";
+    private bool _submitting;
+
+    private record TemplateInfo(string Name, string Description, string Icon, (string Name, string? Color, int? WipLimit)[] Columns);
+
+    private static readonly Dictionary<string, TemplateInfo> _templates = new()
+    {
+        ["scrum"] = new("Scrum", "4 kolumny", Icons.Material.Filled.DeveloperBoard, new[]
+        {
+            ("Backlog", "#6366f1", (int?)null),
+            ("Sprint", "#3b82f6", (int?)null),
+            ("Review", "#f59e0b", (int?)5),
+            ("Done", "#22c55e", (int?)null)
+        }),
+        ["kanban"] = new("Kanban", "3 kolumny", Icons.Material.Filled.ViewKanban, new[]
+        {
+            ("Do zrobienia", "#6366f1", (int?)null),
+            ("W toku", "#f59e0b", (int?)3),
+            ("Gotowe", "#22c55e", (int?)null)
+        }),
+        ["todo"] = new("To-do", "2 kolumny", Icons.Material.Filled.Checklist, new[]
+        {
+            ("Do zrobienia", "#6366f1", (int?)null),
+            ("Gotowe", "#22c55e", (int?)null)
+        }),
+        ["blank"] = new("Pusta", "0 kolumn", Icons.Material.Outlined.BorderAll, Array.Empty<(string, string?, int?)>())
+    };
 
     private async Task Submit()
     {
         if (string.IsNullOrWhiteSpace(_name))
             return;
 
+        _submitting = true;
+
         try
         {
-            await BoardService.CreateBoardAsync(_name.Trim(), _description?.Trim());
+            var board = await BoardService.CreateBoardAsync(_name.Trim(), _description?.Trim());
+
+            if (_templates.TryGetValue(_selectedTemplate, out var template))
+            {
+                foreach (var col in template.Columns)
+                {
+                    await ColumnService.CreateColumnAsync(board.Id, col.Name, col.Color, col.WipLimit);
+                }
+            }
+
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception)
         {
             Notify.ShowError("Nie udało się utworzyć tablicy");
+        }
+        finally
+        {
+            _submitting = false;
         }
     }
 

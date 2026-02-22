@@ -55,7 +55,41 @@ else
             <MudItem xs="12" sm="6" md="4" lg="3">
                 <MudCard Class="boards-card" Elevation="0">
                     <MudCardContent>
-                        <MudText Typo="Typo.h6">@board.Name</MudText>
+                        <div class="boards-card__header">
+                            <div class="boards-card__title-area">
+                                @if (_renamingBoardId == board.Id)
+                                {
+                                    <MudTextField @bind-Value="_renameValue"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  AutoFocus="true"
+                                                  OnBlur="() => SaveRename(board)"
+                                                  OnKeyDown="(e) => OnRenameKeyDown(e, board)"
+                                                  Immediate="true" />
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.h6">@board.Name</MudText>
+                                }
+                            </div>
+                            <div class="boards-card__menu">
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                         Size="Size.Small"
+                                         AnchorOrigin="Origin.BottomRight"
+                                         TransformOrigin="Origin.TopRight"
+                                         Dense="true">
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                 OnClick="() => StartRename(board)">
+                                        Zmień nazwę
+                                    </MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                 IconColor="Color.Error"
+                                                 OnClick="() => OpenDeleteDialog(board)">
+                                        Usuń
+                                    </MudMenuItem>
+                                </MudMenu>
+                            </div>
+                        </div>
                         @if (!string.IsNullOrWhiteSpace(board.Description))
                         {
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2 boards-card__description">
@@ -81,6 +115,9 @@ else
     private List<Board>? _boards;
     private bool _loading = true;
     private bool _error;
+
+    private int? _renamingBoardId;
+    private string _renameValue = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -123,6 +160,73 @@ else
     private void OpenBoard(int id)
     {
         Navigation.NavigateTo($"/board/{id}");
+    }
+
+    // ===== Rename =====
+
+    private void StartRename(Board board)
+    {
+        _renamingBoardId = board.Id;
+        _renameValue = board.Name;
+    }
+
+    private async Task SaveRename(Board board)
+    {
+        if (_renamingBoardId != board.Id)
+            return;
+
+        _renamingBoardId = null;
+
+        var newName = _renameValue.Trim();
+        if (string.IsNullOrWhiteSpace(newName) || newName == board.Name)
+            return;
+
+        try
+        {
+            var updated = await BoardService.UpdateBoardAsync(board.Id, newName, board.Description);
+            if (updated is not null)
+            {
+                board.Name = updated.Name;
+                Notify.ShowSuccess("Nazwa tablicy zaktualizowana");
+            }
+        }
+        catch (Exception)
+        {
+            Notify.ShowError("Nie udało się zmienić nazwy tablicy");
+        }
+    }
+
+    private async Task OnRenameKeyDown(KeyboardEventArgs e, Board board)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveRename(board);
+        }
+        else if (e.Key == "Escape")
+        {
+            _renamingBoardId = null;
+        }
+    }
+
+    // ===== Delete =====
+
+    private async Task OpenDeleteDialog(Board board)
+    {
+        var parameters = new DialogParameters<DeleteBoardDialog>
+        {
+            { x => x.BoardId, board.Id },
+            { x => x.BoardName, board.Name }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DeleteBoardDialog>("Usuń tablicę", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            Notify.ShowSuccess("Tablica usunięta");
+            await LoadBoards();
+        }
     }
 
     private static string Truncate(string text, int maxLength)
